@@ -15,45 +15,57 @@ struct DiffContentView: View {
             ProgressView("Loading diff...")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if !viewModel.diffFiles.isEmpty {
-            ScrollView {
-                LazyVStack(spacing: 0, pinnedViews: []) {
-                    ForEach(Array(viewModel.diffFiles.enumerated()), id: \.element.id) { index, file in
-                        VStack(spacing: 0) {
-                            // File header - big and obvious
-                            HStack(spacing: 12) {
-                                Image(systemName: file.status.icon)
-                                    .foregroundColor(file.status.color)
-                                    .font(.title2)
-                                
-                                Text(file.displayPath)
-                                    .font(.system(size: 18, weight: .bold))
-                                
-                                Spacer()
-                                
-                                let stats = calculateStats(file)
-                                if stats.additions > 0 {
-                                    Text("+\(stats.additions)")
-                                        .font(.system(size: 14, design: .monospaced))
-                                        .foregroundColor(.green)
+            VStack(spacing: 0) {
+                // Debug header showing file count
+                HStack {
+                    Text("Showing \(viewModel.diffFiles.count) file(s)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding(8)
+                    Spacer()
+                }
+                .background(Color.yellow.opacity(0.2))
+                
+                ScrollView {
+                    LazyVStack(spacing: 0, pinnedViews: []) {
+                        ForEach(Array(viewModel.diffFiles.enumerated()), id: \.element.id) { index, file in
+                            VStack(spacing: 0) {
+                                // File header - big and obvious
+                                HStack(spacing: 12) {
+                                    Image(systemName: file.status.icon)
+                                        .foregroundColor(file.status.color)
+                                        .font(.title2)
+                                    
+                                    Text(file.displayPath)
+                                        .font(.system(size: 18, weight: .bold))
+                                    
+                                    Spacer()
+                                    
+                                    let stats = calculateStats(file)
+                                    if stats.additions > 0 {
+                                        Text("+\(stats.additions)")
+                                            .font(.system(size: 14, design: .monospaced))
+                                            .foregroundColor(.green)
+                                    }
+                                    if stats.deletions > 0 {
+                                        Text("-\(stats.deletions)")
+                                            .font(.system(size: 14, design: .monospaced))
+                                            .foregroundColor(.red)
+                                    }
                                 }
-                                if stats.deletions > 0 {
-                                    Text("-\(stats.deletions)")
-                                        .font(.system(size: 14, design: .monospaced))
-                                        .foregroundColor(.red)
+                                .padding()
+                                .background(Color(NSColor.controlBackgroundColor))
+                                
+                                // The actual diff
+                                SimpleDiffView(file: file)
+                                
+                                // Separator between files
+                                if index < viewModel.diffFiles.count - 1 {
+                                    Rectangle()
+                                        .fill(Color.gray)
+                                        .frame(height: 3)
+                                        .padding(.vertical, 20)
                                 }
-                            }
-                            .padding()
-                            .background(Color(NSColor.controlBackgroundColor))
-                            
-                            // The actual diff
-                            SimpleDiffView(file: file)
-                            
-                            // Separator between files
-                            if index < viewModel.diffFiles.count - 1 {
-                                Rectangle()
-                                    .fill(Color.gray)
-                                    .frame(height: 3)
-                                    .padding(.vertical, 20)
                             }
                         }
                     }

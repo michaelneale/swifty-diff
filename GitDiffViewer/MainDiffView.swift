@@ -57,7 +57,6 @@ struct MainDiffView: View {
                 await MainActor.run {
                     viewModel.viewMode = .unstaged
                     viewModel.diffFiles = gitService.unstagedFiles
-                    viewModel.selectedFile = gitService.unstagedFiles.first
                 }
             }
         }
@@ -177,20 +176,22 @@ struct TimelineView: View {
             await MainActor.run {
                 viewModel.viewMode = .unstaged
                 viewModel.diffFiles = appState.gitService?.unstagedFiles ?? []
-                viewModel.selectedFile = viewModel.diffFiles.first
             }
         }
     }
     
     private func selectCommit(_ commit: CommitInfo) {
         Task {
-            viewModel.isLoadingDiff = true
-            let files = await appState.gitService?.loadDiffForCommit(commit) ?? []
             await MainActor.run {
+                viewModel.isLoadingDiff = true
                 viewModel.viewMode = .commit(commit)
                 viewModel.selectedCommit = commit
+            }
+            
+            let files = await appState.gitService?.loadDiffForCommit(commit) ?? []
+            
+            await MainActor.run {
                 viewModel.diffFiles = files
-                viewModel.selectedFile = files.first
                 viewModel.isLoadingDiff = false
             }
         }
@@ -247,97 +248,4 @@ struct CommitRowView: View {
     }
 }
 
-// MARK: - File List View
-struct FileListView: View {
-    @EnvironmentObject var viewModel: ContentViewModel
-    
-    var body: some View {
-        ScrollView {
-            LazyVStack(spacing: 1) {
-                ForEach(viewModel.diffFiles) { file in
-                    FileRowView(file: file)
-                        .onTapGesture {
-                            viewModel.selectedFile = file
-                        }
-                }
-            }
-        }
-    }
-}
 
-// MARK: - File Row View
-struct FileRowView: View {
-    let file: DiffFile
-    @EnvironmentObject var viewModel: ContentViewModel
-    
-    var isSelected: Bool {
-        viewModel.selectedFile?.id == file.id
-    }
-    
-    var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: file.status.icon)
-                .foregroundColor(file.status.color)
-                .frame(width: 20)
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(file.fileName)
-                    .font(.system(size: 13, weight: .medium))
-                    .lineLimit(1)
-                
-                if file.path != file.fileName {
-                    Text(file.path)
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                }
-            }
-            
-            Spacer()
-            
-            // Stats
-            HStack(spacing: 4) {
-                let stats = calculateStats(file)
-                if stats.additions > 0 {
-                    Text("+\(stats.additions)")
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundColor(.green)
-                }
-                if stats.deletions > 0 {
-                    Text("-\(stats.deletions)")
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundColor(.red)
-                }
-            }
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(isSelected ? Color.blue.opacity(0.1) : Color.clear)
-        .overlay(
-            Rectangle()
-                .frame(width: 3)
-                .foregroundColor(isSelected ? .blue : .clear),
-            alignment: .leading
-        )
-    }
-    
-    private func calculateStats(_ file: DiffFile) -> (additions: Int, deletions: Int) {
-        var additions = 0
-        var deletions = 0
-        
-        for hunk in file.hunks {
-            for line in hunk.lines {
-                switch line.type {
-                case .addition:
-                    additions += 1
-                case .deletion:
-                    deletions += 1
-                default:
-                    break
-                }
-            }
-        }
-        
-        return (additions, deletions)
-    }
-}

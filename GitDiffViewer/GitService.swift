@@ -60,7 +60,11 @@ class GitService: ObservableObject {
         
         do {
             let output = try await executeGit(args: ["diff", "HEAD"])
-            let files = parseDiff(output)
+            
+            // Parse on background thread
+            let files = await Task.detached(priority: .userInitiated) {
+                self.parseDiff(output)
+            }.value
             
             await MainActor.run {
                 self.unstagedFiles = files
@@ -95,7 +99,11 @@ class GitService: ObservableObject {
             }
             
             let output = try await executeGit(args: args)
-            let files = parseDiff(output)
+            
+            // Parse on background thread
+            let files = await Task.detached(priority: .userInitiated) {
+                self.parseDiff(output)
+            }.value
             
             // Cache the result
             await cacheDiff(files, for: cacheKey)
@@ -209,22 +217,30 @@ class GitService: ObservableObject {
         var files: [DiffFile] = []
         let lines = output.components(separatedBy: "\n")
         
+        print("🔍 Parsing diff with \(lines.count) lines")
+        
         var i = 0
         while i < lines.count {
             let line = lines[i]
             
             // Look for diff header
             if line.hasPrefix("diff --git") {
+                print("📄 Found diff header at line \(i): \(line)")
                 let (file, newIndex) = parseFile(lines: lines, startIndex: i)
                 if let file = file {
+                    print("✅ Parsed file: \(file.path)")
                     files.append(file)
+                } else {
+                    print("❌ Failed to parse file at line \(i)")
                 }
+                print("   Moving from line \(i) to \(newIndex)")
                 i = newIndex
             } else {
                 i += 1
             }
         }
         
+        print("📊 Total files parsed: \(files.count)")
         return files
     }
     
@@ -235,18 +251,24 @@ class GitService: ObservableObject {
         var status: DiffFile.FileStatus = .modified
         var hunks: [DiffHunk] = []
         
-        // Parse file header
+        // First line should be "diff --git"
+        if i < lines.count && lines[i].hasPrefix("diff --git") {
+            let line = lines[i]
+            let components = line.components(separatedBy: " ")
+            if components.count >= 4 {
+                oldPath = String(components[2].dropFirst(2)) // Remove "a/"
+                path = String(components[3].dropFirst(2)) // Remove "b/"
+            }
+            i += 1
+        }
+        
+        // Parse file metadata and hunks
         while i < lines.count {
             let line = lines[i]
             
             if line.hasPrefix("diff --git") {
-                // Extract paths from "diff --git a/path b/path"
-                let components = line.components(separatedBy: " ")
-                if components.count >= 4 {
-                    oldPath = String(components[2].dropFirst(2)) // Remove "a/"
-                    path = String(components[3].dropFirst(2)) // Remove "b/"
-                }
-                i += 1
+                // Next file - stop here
+                break
             } else if line.hasPrefix("new file mode") {
                 status = .added
                 i += 1
@@ -269,9 +291,6 @@ class GitService: ObservableObject {
                     hunks.append(hunk)
                 }
                 i = newIndex
-            } else if line.hasPrefix("diff --git") || i >= lines.count - 1 {
-                // Next file or end
-                break
             } else {
                 i += 1
             }

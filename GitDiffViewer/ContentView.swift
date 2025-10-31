@@ -122,7 +122,6 @@ struct FeatureItem: View {
 
 // MARK: - Content View Model
 class ContentViewModel: ObservableObject {
-    @Published var selectedFile: DiffFile?
     @Published var selectedCommit: CommitInfo?
     @Published var viewMode: ViewMode = .unstaged
     @Published var diffFiles: [DiffFile] = []
