@@ -18,8 +18,20 @@ class GitService: ObservableObject {
     private var diffCache: [String: [DiffFile]] = [:]
     private let cacheQueue = DispatchQueue(label: "com.gitdiffviewer.cache")
     
+    // File system monitoring
+    private var fileSystemSource: DispatchSourceFileSystemObject?
+    private var gitDirFileDescriptor: Int32 = -1
+    
+    // Callback for when files change
+    var onFilesChanged: (() -> Void)?
+    
     init(repositoryPath: URL) {
         self.repositoryPath = repositoryPath
+        startWatchingRepository()
+    }
+    
+    deinit {
+        stopWatchingRepository()
     }
     
     func clearCache() {
@@ -403,6 +415,61 @@ class GitService: ObservableObject {
         )
         
         return (hunk, i)
+    }
+    
+    // MARK: - File System Monitoring
+    
+    private func startWatchingRepository() {
+        let gitDirPath = repositoryPath.appendingPathComponent(".git").path
+        
+        // Open the .git directory
+        gitDirFileDescriptor = open(gitDirPath, O_EVTONLY)
+        guard gitDirFileDescriptor >= 0 else {
+            print("⚠️ Failed to open .git directory for monitoring")
+            return
+        }
+        
+        // Create a dispatch source for file system events
+        let source = DispatchSource.makeFileSystemObjectSource(
+            fileDescriptor: gitDirFileDescriptor,
+            eventMask: [.write, .delete, .rename, .revoke],
+            queue: DispatchQueue.global(qos: .background)
+        )
+        
+        source.setEventHandler { [weak self] in
+            print("🔄 Repository changed, reloading...")
+            self?.handleRepositoryChange()
+        }
+        
+        source.setCancelHandler { [weak self] in
+            guard let self = self else { return }
+            if self.gitDirFileDescriptor >= 0 {
+                close(self.gitDirFileDescriptor)
+                self.gitDirFileDescriptor = -1
+            }
+        }
+        
+        source.resume()
+        fileSystemSource = source
+        
+        print("👀 Watching repository for changes: \(repositoryPath.path)")
+    }
+    
+    private func stopWatchingRepository() {
+        fileSystemSource?.cancel()
+        fileSystemSource = nil
+    }
+    
+    private func handleRepositoryChange() {
+        // Debounce rapid changes
+        Task {
+            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+            
+            // Notify callback
+            await MainActor.run {
+                onFilesChanged?()
+            }
+        }
     }
 }
 

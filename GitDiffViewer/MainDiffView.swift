@@ -58,6 +58,24 @@ struct MainDiffView: View {
                     viewModel.viewMode = .unstaged
                     viewModel.diffFiles = gitService.unstagedFiles
                 }
+                
+                // Setup file change callback
+                gitService.onFilesChanged = { [weak gitService, weak viewModel, weak appState] in
+                    Task {
+                        guard let gitService = gitService, let viewModel = viewModel else { return }
+                        
+                        // Reload commits
+                        await gitService.loadCommitHistory()
+                        
+                        // If viewing unstaged changes, reload them
+                        if case .unstaged = viewModel.viewMode {
+                            await gitService.loadUnstagedChanges()
+                            await MainActor.run {
+                                viewModel.diffFiles = gitService.unstagedFiles
+                            }
+                        }
+                    }
+                }
             }
         }
     }
