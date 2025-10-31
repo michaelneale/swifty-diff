@@ -32,6 +32,12 @@ A beautiful native macOS application for viewing git diffs with side-by-side com
 - Responsive layout
 - Clean typography with monospace fonts for code
 
+🔔 **Menu Bar Integration**
+- Lives in the macOS menu bar for quick access
+- Stays running when window is closed
+- Quick access menu with common actions
+- Always available, never intrusive
+
 ## Requirements
 
 - macOS 14.0 or later
@@ -94,10 +100,26 @@ A beautiful native macOS application for viewing git diffs with side-by-side com
 - Click any file to view its diff
 - File status icons indicate: Added (green +), Modified (blue pencil), Deleted (red -), Renamed (orange arrow)
 
+### Menu Bar Access
+
+GitDiffViewer lives in your macOS menu bar for quick, persistent access:
+
+1. **Find the Icon**: Look for the branch icon (⎇) in the top-right menu bar
+2. **Click to Access Menu**:
+   - **Open Repository...** - Open a new git repository
+   - **Show Window** - Bring back the main window if closed
+   - **About GitDiffViewer** - View app information
+   - **Quit GitDiffViewer** - Exit the application
+3. **Close Window Without Quitting**: Press `⌘W` to close the window - the app stays running in the menu bar
+4. **Reopen Window**: Click the menu bar icon and select "Show Window"
+
+**Pro Tip**: The app continues running in the menu bar even when the main window is closed, making it instantly accessible whenever you need to view diffs.
+
 ### Keyboard Shortcuts
 
 - `⌘O` - Open Repository
 - `⌘R` - Refresh (reload commits)
+- `⌘W` - Close window (app stays in menu bar)
 
 ## Architecture
 

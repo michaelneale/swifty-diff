@@ -14,8 +14,18 @@ class GitService: ObservableObject {
     @Published var isLoading = false
     @Published var error: String?
     
+    // Cache for commit diffs to improve performance
+    private var diffCache: [String: [DiffFile]] = [:]
+    private let cacheQueue = DispatchQueue(label: "com.gitdiffviewer.cache")
+    
     init(repositoryPath: URL) {
         self.repositoryPath = repositoryPath
+    }
+    
+    func clearCache() {
+        cacheQueue.async { [weak self] in
+            self?.diffCache.removeAll()
+        }
     }
     
     // MARK: - Public Methods
@@ -65,6 +75,16 @@ class GitService: ObservableObject {
     }
     
     func loadDiffForCommit(_ commit: CommitInfo) async -> [DiffFile] {
+        // Check cache first
+        let cacheKey = commit.hash
+        if let cached = await getCachedDiff(for: cacheKey) {
+            print("📦 Using cached diff for commit \(commit.shortHash)")
+            return cached
+        }
+        
+        print("⏳ Loading diff for commit \(commit.shortHash)...")
+        let startTime = Date()
+        
         do {
             let args: [String]
             if let parent = commit.parentHash {
@@ -75,12 +95,32 @@ class GitService: ObservableObject {
             }
             
             let output = try await executeGit(args: args)
-            return parseDiff(output)
+            let files = parseDiff(output)
+            
+            // Cache the result
+            await cacheDiff(files, for: cacheKey)
+            
+            let elapsed = Date().timeIntervalSince(startTime)
+            print("✅ Loaded diff in \(String(format: "%.2f", elapsed))s")
+            
+            return files
         } catch {
             await MainActor.run {
                 self.error = "Failed to load diff: \(error.localizedDescription)"
             }
             return []
+        }
+    }
+    
+    private func getCachedDiff(for key: String) async -> [DiffFile]? {
+        return await cacheQueue.sync {
+            return diffCache[key]
+        }
+    }
+    
+    private func cacheDiff(_ files: [DiffFile], for key: String) async {
+        await cacheQueue.sync {
+            diffCache[key] = files
         }
     }
     

@@ -4,10 +4,11 @@
 
 ### Installation & Running
 
-**Option 1: Quick Run**
+**Option 1: Quick Run (Recommended)**
 ```bash
 ./run.sh
 ```
+The app will launch and appear in your menu bar with a branch icon (⎇)
 
 **Option 2: Open in Xcode**
 ```bash
@@ -20,6 +21,14 @@ Then press ⌘R to run
 xcodebuild -project GitDiffViewer.xcodeproj -scheme GitDiffViewer -configuration Debug build
 open ~/Library/Developer/Xcode/DerivedData/GitDiffViewer-*/Build/Products/Debug/GitDiffViewer.app
 ```
+
+### 🔔 Menu Bar Feature
+
+**GitDiffViewer now lives in your menu bar!**
+- Look for the branch icon (⎇) in the top-right of your screen
+- Click it to access: Open Repository, Show Window, Quit, and more
+- Close the window with `⌘W` - the app stays running in the menu bar
+- Click "Show Window" from the menu bar to bring it back anytime
 
 ### First Time Use
 

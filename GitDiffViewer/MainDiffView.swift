@@ -53,10 +53,11 @@ struct MainDiffView: View {
                 await gitService.loadCommitHistory()
                 await gitService.loadUnstagedChanges()
                 
-                // Set initial view to unstaged changes
+                // Set initial view to unstaged changes by default
                 await MainActor.run {
                     viewModel.viewMode = .unstaged
                     viewModel.diffFiles = gitService.unstagedFiles
+                    viewModel.selectedFile = gitService.unstagedFiles.first
                 }
             }
         }
@@ -67,27 +68,10 @@ struct MainDiffView: View {
 struct SidebarView: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var viewModel: ContentViewModel
-    @State private var selectedTab = 0
-    @State private var timelineSliderValue: Double = 0
     
     var body: some View {
         VStack(spacing: 0) {
-            // Tab selector
-            Picker("View", selection: $selectedTab) {
-                Text("Timeline").tag(0)
-                Text("Files").tag(1)
-            }
-            .pickerStyle(.segmented)
-            .padding()
-            
-            Divider()
-            
-            // Content based on selected tab
-            if selectedTab == 0 {
-                TimelineView()
-            } else {
-                FileListView()
-            }
+            TimelineView()
         }
         .background(Color(NSColor.controlBackgroundColor))
     }
@@ -127,47 +111,32 @@ struct TimelineView: View {
             
             // Timeline Slider
             if let gitService = appState.gitService, !gitService.commits.isEmpty {
-                VStack(spacing: 8) {
+                VStack(spacing: 4) {
                     HStack {
                         Text("Timeline")
                             .font(.caption)
                             .foregroundColor(.secondary)
-                            .textCase(.uppercase)
                         Spacer()
-                        Text("\(gitService.commits.count) commits")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
                     }
-                    .padding(.horizontal)
                     
-                    HStack(spacing: 12) {
-                        Image(systemName: "clock.arrow.circlepath")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        
-                        Slider(
-                            value: $sliderValue,
-                            in: 0...Double(max(0, gitService.commits.count - 1)),
-                            step: 1
-                        ) { editing in
-                            if !editing {
-                                // When user releases slider, select that commit
-                                let index = Int(sliderValue)
-                                if index < gitService.commits.count {
-                                    selectCommit(gitService.commits[index])
-                                }
+                    Slider(
+                        value: $sliderValue,
+                        in: 0...Double(max(0, gitService.commits.count - 1)),
+                        step: 1
+                    ) { editing in
+                        if !editing {
+                            // When user releases slider, select that commit
+                            let index = Int(sliderValue)
+                            if index < gitService.commits.count {
+                                selectCommit(gitService.commits[index])
                             }
                         }
-                        .accentColor(Color(hex: "667eea"))
-                        
-                        Image(systemName: "clock")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
                     }
-                    .padding(.horizontal)
+                    .labelsHidden()
+                    .accentColor(Color(hex: "667eea"))
                 }
-                .padding(.vertical, 12)
-                .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
+                .padding(.horizontal)
+                .padding(.vertical, 8)
                 
                 Divider()
             }
