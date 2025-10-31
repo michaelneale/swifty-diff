@@ -68,6 +68,7 @@ struct SidebarView: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var viewModel: ContentViewModel
     @State private var selectedTab = 0
+    @State private var timelineSliderValue: Double = 0
     
     var body: some View {
         VStack(spacing: 0) {
@@ -96,6 +97,7 @@ struct SidebarView: View {
 struct TimelineView: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var viewModel: ContentViewModel
+    @State private var sliderValue: Double = 0
     
     var body: some View {
         VStack(spacing: 0) {
@@ -123,6 +125,53 @@ struct TimelineView: View {
             
             Divider()
             
+            // Timeline Slider
+            if let gitService = appState.gitService, !gitService.commits.isEmpty {
+                VStack(spacing: 8) {
+                    HStack {
+                        Text("Timeline")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .textCase(.uppercase)
+                        Spacer()
+                        Text("\(gitService.commits.count) commits")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal)
+                    
+                    HStack(spacing: 12) {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        Slider(
+                            value: $sliderValue,
+                            in: 0...Double(max(0, gitService.commits.count - 1)),
+                            step: 1
+                        ) { editing in
+                            if !editing {
+                                // When user releases slider, select that commit
+                                let index = Int(sliderValue)
+                                if index < gitService.commits.count {
+                                    selectCommit(gitService.commits[index])
+                                }
+                            }
+                        }
+                        .accentColor(Color(hex: "667eea"))
+                        
+                        Image(systemName: "clock")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal)
+                }
+                .padding(.vertical, 12)
+                .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
+                
+                Divider()
+            }
+            
             // Commit list
             ScrollView {
                 LazyVStack(spacing: 0) {
@@ -131,10 +180,24 @@ struct TimelineView: View {
                             CommitRowView(commit: commit)
                                 .onTapGesture {
                                     selectCommit(commit)
+                                    // Update slider to match selected commit
+                                    if let index = gitService.commits.firstIndex(where: { $0.id == commit.id }) {
+                                        sliderValue = Double(index)
+                                    }
                                 }
                         }
                     }
                 }
+            }
+        }
+        .onChange(of: appState.gitService?.commits) { commits in
+            // Reset slider when commits change
+            sliderValue = 0
+        }
+        .onAppear {
+            // Initialize slider to first commit
+            if let gitService = appState.gitService, !gitService.commits.isEmpty {
+                sliderValue = 0
             }
         }
     }

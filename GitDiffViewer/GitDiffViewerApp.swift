@@ -15,7 +15,24 @@ struct GitDiffViewerApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(appState)
-                .frame(minWidth: 1200, minHeight: 800)
+                .onAppear {
+                    handleCommandLineArguments()
+                }
+        }
+        .windowStyle(.hiddenTitleBar)
+        .defaultSize(width: 1400, height: 900)
+        .commands {
+            CommandGroup(replacing: .appInfo) {
+                Button("About GitDiffViewer") {
+                    NSApplication.shared.orderFrontStandardAboutPanel(
+                        options: [
+                            NSApplication.AboutPanelOptionKey.applicationName: "GitDiffViewer",
+                            NSApplication.AboutPanelOptionKey.applicationVersion: "1.0",
+                            NSApplication.AboutPanelOptionKey.version: "1.0.0"
+                        ]
+                    )
+                }
+            }
         }
         .commands {
             CommandGroup(replacing: .newItem) {
@@ -23,6 +40,22 @@ struct GitDiffViewerApp: App {
                     appState.showDirectoryPicker = true
                 }
                 .keyboardShortcut("o", modifiers: .command)
+            }
+        }
+    }
+    
+    private func handleCommandLineArguments() {
+        let args = CommandLine.arguments
+        if args.count > 1 {
+            let path = args[1]
+            let url = URL(fileURLWithPath: path)
+            // Check if it's a valid directory
+            var isDirectory: ObjCBool = false
+            if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory), isDirectory.boolValue {
+                appState.openRepository(at: url)
+            } else {
+                print("Error: '\(path)' is not a valid directory")
+                print("Usage: GitDiffViewer [directory-path]")
             }
         }
     }
@@ -37,5 +70,6 @@ class AppState: ObservableObject {
     func openRepository(at url: URL) {
         selectedRepository = url
         gitService = GitService(repositoryPath: url)
+        print("Opened repository at: \(url.path)")
     }
 }

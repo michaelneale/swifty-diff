@@ -1,0 +1,60 @@
+#!/bin/bash
+# GitDiffViewer - Command-line launcher
+# Usage: ./gitdiff [directory]
+
+set -e
+
+APP_NAME="GitDiffViewer"
+APP_PATH="$HOME/Library/Developer/Xcode/DerivedData/GitDiffViewer-*/Build/Products/Debug/$APP_NAME.app"
+
+# Function to find the app
+find_app() {
+    local found=$(find "$HOME/Library/Developer/Xcode/DerivedData" -name "$APP_NAME.app" -path "*/Debug/*" 2>/dev/null | head -1)
+    if [ -z "$found" ]; then
+        echo "❌ Error: $APP_NAME.app not found. Please build the app first:"
+        echo "   xcodebuild -project GitDiffViewer.xcodeproj -scheme GitDiffViewer build"
+        exit 1
+    fi
+    echo "$found"
+}
+
+# Check if directory argument is provided
+if [ $# -eq 0 ]; then
+    # No arguments - launch with GUI picker
+    echo "🚀 Launching $APP_NAME..."
+    APP=$(find_app)
+    open "$APP"
+else
+    # Directory provided - launch with that directory
+    DIR="$1"
+    
+    # Convert to absolute path
+    if [[ "$DIR" != /* ]]; then
+        DIR="$(pwd)/$DIR"
+    fi
+    
+    # Check if directory exists
+    if [ ! -d "$DIR" ]; then
+        echo "❌ Error: Directory '$DIR' does not exist"
+        exit 1
+    fi
+    
+    # Check if it's a git repository
+    if [ ! -d "$DIR/.git" ]; then
+        echo "⚠️  Warning: '$DIR' does not appear to be a git repository"
+        echo "   (no .git directory found)"
+        read -p "Continue anyway? (y/n) " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            exit 1
+        fi
+    fi
+    
+    echo "📂 Opening repository: $DIR"
+    echo "🚀 Launching $APP_NAME..."
+    
+    APP=$(find_app)
+    open "$APP" --args "$DIR"
+fi
+
+echo "✨ Done!"

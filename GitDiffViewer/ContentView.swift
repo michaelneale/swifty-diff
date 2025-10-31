@@ -20,8 +20,17 @@ struct ContentView: View {
                     .environmentObject(viewModel)
             }
         }
-        .sheet(isPresented: $appState.showDirectoryPicker) {
-            DirectoryPickerView()
+        .fileImporter(isPresented: $appState.showDirectoryPicker, allowedContentTypes: [.folder]) { result in
+            handleDirectorySelection(result)
+        }
+    }
+    
+    private func handleDirectorySelection(_ result: Result<URL, Error>) {
+        switch result {
+        case .success(let url):
+            appState.openRepository(at: url)
+        case .failure(let error):
+            print("Error selecting directory: \(error.localizedDescription)")
         }
     }
 }
@@ -108,48 +117,6 @@ struct FeatureItem: View {
                 .foregroundColor(.secondary)
         }
         .frame(width: 120)
-    }
-}
-
-// MARK: - Directory Picker
-struct DirectoryPickerView: View {
-    @EnvironmentObject var appState: AppState
-    @Environment(\.dismiss) var dismiss
-    
-    var body: some View {
-        VStack(spacing: 20) {
-            Text("Select Git Repository")
-                .font(.title2)
-                .fontWeight(.bold)
-            
-            Text("Choose a directory containing a git repository")
-                .foregroundColor(.secondary)
-            
-            Button("Browse...") {
-                selectDirectory()
-            }
-            .buttonStyle(.borderedProminent)
-            
-            Button("Cancel") {
-                dismiss()
-            }
-            .buttonStyle(.bordered)
-        }
-        .padding(40)
-        .frame(width: 400, height: 200)
-    }
-    
-    private func selectDirectory() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.message = "Select a git repository directory"
-        
-        if panel.runModal() == .OK, let url = panel.url {
-            appState.openRepository(at: url)
-            dismiss()
-        }
     }
 }
 
