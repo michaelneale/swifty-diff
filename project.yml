@@ -1,0 +1,18 @@
+name: GitDiffViewer
+options:
+  bundleIdPrefix: com.block.goose
+  deploymentTarget:
+    macOS: "14.0"
+targets:
+  GitDiffViewer:
+    type: application
+    platform: macOS
+    sources:
+      - GitDiffViewer
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.block.goose.GitDiffViewer
+      PRODUCT_NAME: GitDiffViewer
+      INFOPLIST_FILE: GitDiffViewer/Info.plist
+      SWIFT_VERSION: "5.9"
+      MACOSX_DEPLOYMENT_TARGET: "14.0"
+      ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon

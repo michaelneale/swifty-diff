@@ -1,0 +1,3034 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Git Diff Report</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        header .meta {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        
+        .summary {
+            background: #f8f9fa;
+            padding: 30px 40px;
+            border-bottom: 2px solid #e9ecef;
+        }
+        
+        .summary h2 {
+            color: #495057;
+            margin-bottom: 15px;
+        }
+        
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .stat-card .label {
+            font-size: 0.85em;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .stat-card .value {
+            font-size: 2em;
+            font-weight: 700;
+            color: #667eea;
+            margin-top: 5px;
+        }
+        
+        .commit {
+            padding: 40px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .commit:last-child {
+            border-bottom: none;
+        }
+        
+        .commit-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .commit-title {
+            flex: 1;
+            min-width: 300px;
+        }
+        
+        .commit-title h2 {
+            color: #212529;
+            margin-bottom: 8px;
+            font-size: 1.5em;
+        }
+        
+        .commit-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 0.9em;
+            color: #6c757d;
+            flex-wrap: wrap;
+        }
+        
+        .commit-meta span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .badge.feature { background: #d4edda; color: #155724; }
+        .badge.bug-fix { background: #f8d7da; color: #721c24; }
+        .badge.performance { background: #fff3cd; color: #856404; }
+        .badge.refactor { background: #d1ecf1; color: #0c5460; }
+        .badge.documentation { background: #e7e8ea; color: #383d41; }
+        .badge.enhancement { background: #cfe2ff; color: #084298; }
+        .badge.cleanup { background: #f8d7da; color: #721c24; }
+        .badge.test { background: #d1e7dd; color: #0f5132; }
+        
+        .impact {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75em;
+            font-weight: 600;
+        }
+        
+        .impact.minimal { background: #e9ecef; color: #495057; }
+        .impact.low { background: #d1e7dd; color: #0f5132; }
+        .impact.medium { background: #fff3cd; color: #856404; }
+        .impact.high { background: #f8d7da; color: #721c24; }
+        
+        .key-changes {
+            margin: 25px 0;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .key-changes h3 {
+            color: #495057;
+            margin-bottom: 12px;
+            font-size: 1.1em;
+        }
+        
+        .key-changes ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .key-changes li {
+            padding: 8px 0 8px 25px;
+            position: relative;
+            color: #495057;
+        }
+        
+        .key-changes li:before {
+            content: "→";
+            position: absolute;
+            left: 0;
+            color: #667eea;
+            font-weight: bold;
+        }
+        
+        .file-changes {
+            margin-top: 25px;
+        }
+        
+        .file-change {
+            margin-bottom: 25px;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .file-header {
+            background: #f8f9fa;
+            padding: 12px 15px;
+            font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #495057;
+            font-weight: 600;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .hunk-header {
+            background: #e9ecef;
+            padding: 8px 15px;
+            font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+            font-size: 0.8em;
+            color: #495057;
+            font-weight: 600;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .diff-table {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1px;
+            background: #dee2e6;
+            overflow-x: auto;
+        }
+        
+        .diff-column {
+            background: #fff;
+            overflow-x: auto;
+        }
+        
+        .column-header {
+            background: #f8f9fa;
+            padding: 8px 12px;
+            font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+            font-size: 0.75em;
+            font-weight: 700;
+            color: #495057;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #dee2e6;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        
+        .diff-column.old .column-header {
+            background: #fff5f5;
+            border-bottom-color: #dc3545;
+        }
+        
+        .diff-column.new .column-header {
+            background: #f0fff4;
+            border-bottom-color: #28a745;
+        }
+        
+        .diff-line {
+            font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+            font-size: 0.85em;
+            padding: 2px 12px;
+            white-space: pre;
+            min-height: 1.5em;
+            line-height: 1.5em;
+        }
+        
+        .diff-line.add {
+            background: #d4edda;
+        }
+        
+        .diff-line.remove {
+            background: #f8d7da;
+        }
+        
+        .diff-line.context {
+            background: #fff;
+            color: #495057;
+        }
+        
+        .diff-line.empty {
+            background: #f8f9fa;
+            opacity: 0.3;
+        }
+        
+        .usage-guide {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 20px;
+            margin: 20px 40px;
+            border-radius: 8px;
+        }
+        
+        .usage-guide h3 {
+            color: #856404;
+            margin-bottom: 12px;
+        }
+        
+        .usage-guide code {
+            background: #fff;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #495057;
+        }
+        
+        .usage-guide ul {
+            margin-left: 20px;
+            color: #856404;
+        }
+        
+        .usage-guide li {
+            margin: 8px 0;
+        }
+        
+        .hash {
+            font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+            font-size: 0.9em;
+            background: #f8f9fa;
+            padding: 2px 8px;
+            border-radius: 4px;
+            color: #667eea;
+            font-weight: 600;
+        }
+        
+        footer {
+            background: #f8f9fa;
+            padding: 20px 40px;
+            text-align: center;
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            header, .summary, .commit, footer {
+                padding: 20px;
+            }
+            
+            .commit-header {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+
+
+        <header>
+            <h1>📊 Git Diff Report</h1>
+            <div class="meta">Generated on October 31, 2025 at 12:56</div>
+        </header>
+        
+        <div class="usage-guide">
+            <h3>📖 How to Generate This Report</h3>
+            <p>This report was generated using the Git Diff Report Generator tool. To create your own reports:</p>
+            <ul>
+                <li><strong>Last N commits:</strong> <code>python3 git-diff-report.py -n 2 -o report.html</code></li>
+                <li><strong>Commit range:</strong> <code>python3 git-diff-report.py --from HEAD~5 --to HEAD -o report.html</code></li>
+                <li><strong>Single commit:</strong> <code>python3 git-diff-report.py --commit abc123def -o report.html</code></li>
+                <li><strong>Specific branches:</strong> <code>python3 git-diff-report.py --from main --to feature-branch -o report.html</code></li>
+            </ul>
+            <p><strong>Features:</strong> Side-by-side diff view, automatic change classification (feature/bug-fix/performance), impact assessment, key change extraction, and beautiful HTML5 formatting.</p>
+        </div>
+        
+        <div class="summary">
+            <h2>Summary</h2>
+            <div class="summary-stats">
+                <div class="stat-card">
+                    <div class="label">Commits</div>
+                    <div class="value">2</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">Files Changed</div>
+                    <div class="value">8</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">Authors</div>
+                    <div class="value">1</div>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="commit">
+            <div class="commit-header">
+                <div class="commit-title">
+                    <h2>Perf drag (#45)</h2>
+                    <div class="commit-meta">
+                        <span>👤 Michael Neale</span>
+                        <span>📅 2025-10-30 16:44:07 +1100</span>
+                        <span><span class="hash">2d40783</span></span>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <span class="badge performance">performance</span>
+                    <span class="impact low">low impact</span>
+                </div>
+            </div>
+
+
+            <div style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 6px;">
+                <pre style="white-space: pre-wrap; font-family: inherit; color: #495057;">* reducing judder on drag
+
+* more efficiencies around date and detach</pre>
+            </div>
+
+
+            <div class="key-changes">
+                <h3>🔍 Key Changes</h3>
+                <ul>
+
+                    <li>Updated documentation in Goose/NodeMatrix.swift</li>
+
+                    <li>Performance optimization in Goose/NodeMatrix.swift</li>
+
+                    <li>Updated documentation in Goose/WelcomeView.swift</li>
+
+                    <li>Performance optimization in Goose/WelcomeView.swift</li>
+
+                </ul>
+            </div>
+
+            <div class="file-changes">
+
+
+                <div class="file-change">
+                    <div class="file-header">📄 Goose/NodeMatrix.swift</div>
+
+
+                    <div class="hunk-header">@@ -15,6 +15,15 @@ struct NodeMatrix: View {</div>
+                    <div class="diff-table">
+                        <div class="diff-column old">
+                            <div class="column-header">Before</div>
+
+                            <div class="diff-line context">    @State private var dashPhase: CGFloat = 0</div>
+
+                            <div class="diff-line context">    @State private var containerOffset: CGFloat = 0</div>
+
+                            <div class="diff-line context">    @State private var geometrySize: CGSize = .zero</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">// MARK: - Position Cache</div>
+
+                            <div class="diff-line context">/// Cache structure: [cacheKey: [sessionId: position]]</div>
+
+                            <div class="diff-line context">/// cacheKey format: &quot;dateLabel-widthxheight&quot;</div>
+
+                        </div>
+                        <div class="diff-column new">
+                            <div class="column-header">After</div>
+
+                            <div class="diff-line context">    @State private var dashPhase: CGFloat = 0</div>
+
+                            <div class="diff-line context">    @State private var containerOffset: CGFloat = 0</div>
+
+                            <div class="diff-line context">    @State private var geometrySize: CGSize = .zero</div>
+
+                            <div class="diff-line add">    </div>
+
+                            <div class="diff-line add">    // MARK: - Shared Date Formatter</div>
+
+                            <div class="diff-line add">    /// Reusable date formatter to avoid expensive recreation</div>
+
+                            <div class="diff-line add">    private static let dateFormatter: ISO8601DateFormatter = {</div>
+
+                            <div class="diff-line add">        let formatter = ISO8601DateFormatter()</div>
+
+                            <div class="diff-line add">        formatter.formatOptions = [.withInternetDateTime]</div>
+
+                            <div class="diff-line add">        return formatter</div>
+
+                            <div class="diff-line add">    }()</div>
+
+                            <div class="diff-line add">    </div>
+
+                            <div class="diff-line context">// MARK: - Position Cache</div>
+
+                            <div class="diff-line context">/// Cache structure: [cacheKey: [sessionId: position]]</div>
+
+                            <div class="diff-line context">/// cacheKey format: &quot;dateLabel-widthxheight&quot;</div>
+
+                        </div>
+                    </div>
+
+
+                    <div class="hunk-header">@@ -79,10 +88,7 @@ struct NodeMatrix: View {</div>
+                    <div class="diff-table">
+                        <div class="diff-column old">
+                            <div class="column-header">Before</div>
+
+                            <div class="diff-line context">        let target = targetDate(for: offset)</div>
+
+                            <div class="diff-line context">        </div>
+
+                            <div class="diff-line context">        let filtered = sessions.filter { session in</div>
+
+                            <div class="diff-line remove">            let formatter = ISO8601DateFormatter()</div>
+
+                            <div class="diff-line remove">            formatter.formatOptions = [.withInternetDateTime]</div>
+
+                            <div class="diff-line remove">            </div>
+
+                            <div class="diff-line remove">            guard let sessionDate = formatter.date(from: session.updatedAt) else {</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">                return false</div>
+
+                            <div class="diff-line context">            }</div>
+
+                            <div class="diff-line context">            </div>
+
+                        </div>
+                        <div class="diff-column new">
+                            <div class="column-header">After</div>
+
+                            <div class="diff-line context">        let target = targetDate(for: offset)</div>
+
+                            <div class="diff-line context">        </div>
+
+                            <div class="diff-line context">        let filtered = sessions.filter { session in</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line add">            guard let sessionDate = Self.dateFormatter.date(from: session.updatedAt) else {</div>
+
+                            <div class="diff-line context">                return false</div>
+
+                            <div class="diff-line context">            }</div>
+
+                            <div class="diff-line context">            </div>
+
+                        </div>
+                    </div>
+
+
+                    <div class="hunk-header">@@ -90,10 +96,8 @@ struct NodeMatrix: View {</div>
+                    <div class="diff-table">
+                        <div class="diff-column old">
+                            <div class="column-header">Before</div>
+
+                            <div class="diff-line context">        }</div>
+
+                            <div class="diff-line context">        </div>
+
+                            <div class="diff-line context">        let sorted = filtered.sorted { session1, session2 in</div>
+
+                            <div class="diff-line remove">            let formatter = ISO8601DateFormatter()</div>
+
+                            <div class="diff-line remove">            formatter.formatOptions = [.withInternetDateTime]</div>
+
+                            <div class="diff-line remove">            guard let date1 = formatter.date(from: session1.updatedAt),</div>
+
+                            <div class="diff-line remove">                  let date2 = formatter.date(from: session2.updatedAt) else {</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">                return false</div>
+
+                            <div class="diff-line context">            }</div>
+
+                            <div class="diff-line context">            return date1 &lt; date2</div>
+
+                        </div>
+                        <div class="diff-column new">
+                            <div class="column-header">After</div>
+
+                            <div class="diff-line context">        }</div>
+
+                            <div class="diff-line context">        </div>
+
+                            <div class="diff-line context">        let sorted = filtered.sorted { session1, session2 in</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line add">            guard let date1 = Self.dateFormatter.date(from: session1.updatedAt),</div>
+
+                            <div class="diff-line add">                  let date2 = Self.dateFormatter.date(from: session2.updatedAt) else {</div>
+
+                            <div class="diff-line context">                return false</div>
+
+                            <div class="diff-line context">            }</div>
+
+                            <div class="diff-line context">            return date1 &lt; date2</div>
+
+                        </div>
+                    </div>
+
+
+                    <div class="hunk-header">@@ -115,10 +119,7 @@ struct NodeMatrix: View {</div>
+                    <div class="diff-table">
+                        <div class="diff-column old">
+                            <div class="column-header">Before</div>
+
+                            <div class="diff-line context">        let target = targetDate(for: offset)</div>
+
+                            <div class="diff-line context">        </div>
+
+                            <div class="diff-line context">        let filtered = sessions.filter { session in</div>
+
+                            <div class="diff-line remove">            let formatter = ISO8601DateFormatter()</div>
+
+                            <div class="diff-line remove">            formatter.formatOptions = [.withInternetDateTime]</div>
+
+                            <div class="diff-line remove">            </div>
+
+                            <div class="diff-line remove">            guard let sessionDate = formatter.date(from: session.updatedAt) else {</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">                return false</div>
+
+                            <div class="diff-line context">            }</div>
+
+                            <div class="diff-line context">            </div>
+
+                        </div>
+                        <div class="diff-column new">
+                            <div class="column-header">After</div>
+
+                            <div class="diff-line context">        let target = targetDate(for: offset)</div>
+
+                            <div class="diff-line context">        </div>
+
+                            <div class="diff-line context">        let filtered = sessions.filter { session in</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line add">            guard let sessionDate = Self.dateFormatter.date(from: session.updatedAt) else {</div>
+
+                            <div class="diff-line context">                return false</div>
+
+                            <div class="diff-line context">            }</div>
+
+                            <div class="diff-line context">            </div>
+
+                        </div>
+                    </div>
+
+
+                    <div class="hunk-header">@@ -126,10 +127,8 @@ struct NodeMatrix: View {</div>
+                    <div class="diff-table">
+                        <div class="diff-column old">
+                            <div class="column-header">Before</div>
+
+                            <div class="diff-line context">        }</div>
+
+                            <div class="diff-line context">        </div>
+
+                            <div class="diff-line context">        let sorted = filtered.sorted { session1, session2 in</div>
+
+                            <div class="diff-line remove">            let formatter = ISO8601DateFormatter()</div>
+
+                            <div class="diff-line remove">            formatter.formatOptions = [.withInternetDateTime]</div>
+
+                            <div class="diff-line remove">            guard let date1 = formatter.date(from: session1.updatedAt),</div>
+
+                            <div class="diff-line remove">                  let date2 = formatter.date(from: session2.updatedAt) else {</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">                return false</div>
+
+                            <div class="diff-line context">            }</div>
+
+                            <div class="diff-line context">            return date1 &lt; date2</div>
+
+                        </div>
+                        <div class="diff-column new">
+                            <div class="column-header">After</div>
+
+                            <div class="diff-line context">        }</div>
+
+                            <div class="diff-line context">        </div>
+
+                            <div class="diff-line context">        let sorted = filtered.sorted { session1, session2 in</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line add">            guard let date1 = Self.dateFormatter.date(from: session1.updatedAt),</div>
+
+                            <div class="diff-line add">                  let date2 = Self.dateFormatter.date(from: session2.updatedAt) else {</div>
+
+                            <div class="diff-line context">                return false</div>
+
+                            <div class="diff-line context">            }</div>
+
+                            <div class="diff-line context">            return date1 &lt; date2</div>
+
+                        </div>
+                    </div>
+
+
+                    <div class="hunk-header">@@ -304,13 +303,20 @@ struct NodeMatrix: View {</div>
+                    <div class="diff-table">
+                        <div class="diff-column old">
+                            <div class="column-header">Before</div>
+
+                            <div class="diff-line context">                DragGesture(minimumDistance: 10)</div>
+
+                            <div class="diff-line context">                    .updating($isDragging) { value, state, transaction in</div>
+
+                            <div class="diff-line context">                        state = true</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">                    }</div>
+
+                            <div class="diff-line context">                    .onChanged { value in</div>
+
+                            <div class="diff-line context">                        let horizontalAmount = value.translation.width</div>
+
+                            <div class="diff-line context">                        let verticalAmount = abs(value.translation.height)</div>
+
+                            <div class="diff-line context">                        </div>
+
+                            <div class="diff-line context">                        if abs(horizontalAmount) &gt; verticalAmount {</div>
+
+                            <div class="diff-line remove">                            dragOffset = horizontalAmount</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">                        }</div>
+
+                            <div class="diff-line context">                    }</div>
+
+                            <div class="diff-line context">                    .onEnded { value in</div>
+
+                        </div>
+                        <div class="diff-column new">
+                            <div class="column-header">After</div>
+
+                            <div class="diff-line context">                DragGesture(minimumDistance: 10)</div>
+
+                            <div class="diff-line context">                    .updating($isDragging) { value, state, transaction in</div>
+
+                            <div class="diff-line context">                        state = true</div>
+
+                            <div class="diff-line add">                        // Disable animations during drag for smooth performance</div>
+
+                            <div class="diff-line add">                        transaction.animation = nil</div>
+
+                            <div class="diff-line context">                    }</div>
+
+                            <div class="diff-line context">                    .onChanged { value in</div>
+
+                            <div class="diff-line context">                        let horizontalAmount = value.translation.width</div>
+
+                            <div class="diff-line context">                        let verticalAmount = abs(value.translation.height)</div>
+
+                            <div class="diff-line context">                        </div>
+
+                            <div class="diff-line context">                        if abs(horizontalAmount) &gt; verticalAmount {</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line add">                            // Disable animation for immediate drag response</div>
+
+                            <div class="diff-line add">                            var transaction = Transaction()</div>
+
+                            <div class="diff-line add">                            transaction.disablesAnimations = true</div>
+
+                            <div class="diff-line add">                            withTransaction(transaction) {</div>
+
+                            <div class="diff-line add">                                dragOffset = horizontalAmount</div>
+
+                            <div class="diff-line add">                            }</div>
+
+                            <div class="diff-line context">                        }</div>
+
+                            <div class="diff-line context">                    }</div>
+
+                            <div class="diff-line context">                    .onEnded { value in</div>
+
+                        </div>
+                    </div>
+
+                </div>
+
+
+                <div class="file-change">
+                    <div class="file-header">📄 Goose/WelcomeView.swift</div>
+
+
+                    <div class="hunk-header">@@ -116,7 +116,8 @@ struct WelcomeView: View {</div>
+                    <div class="diff-table">
+                        <div class="diff-column old">
+                            <div class="column-header">Before</div>
+
+                            <div class="diff-line context">                                                // Update the trigger point to prevent immediate re-triggers</div>
+
+                            <div class="diff-line context">                                                lastLoadTriggeredAtOffset = daysOffset</div>
+
+                            <div class="diff-line context">                                                </div>
+
+                            <div class="diff-line remove">                                                Task {</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">                                                    await onLoadMore()</div>
+
+                            <div class="diff-line context">                                                }</div>
+
+                            <div class="diff-line context">                                            }</div>
+
+                        </div>
+                        <div class="diff-column new">
+                            <div class="column-header">After</div>
+
+                            <div class="diff-line context">                                                // Update the trigger point to prevent immediate re-triggers</div>
+
+                            <div class="diff-line context">                                                lastLoadTriggeredAtOffset = daysOffset</div>
+
+                            <div class="diff-line context">                                                </div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line add">                                                // Use detached task to avoid blocking UI thread during swipe</div>
+
+                            <div class="diff-line add">                                                Task.detached {</div>
+
+                            <div class="diff-line context">                                                    await onLoadMore()</div>
+
+                            <div class="diff-line context">                                                }</div>
+
+                            <div class="diff-line context">                                            }</div>
+
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+
+        <div class="commit">
+            <div class="commit-header">
+                <div class="commit-title">
+                    <h2>Micn/working dir visible (#36)</h2>
+                    <div class="commit-meta">
+                        <span>👤 Michael Neale</span>
+                        <span>📅 2025-10-30 08:44:05 +1100</span>
+                        <span><span class="hash">363eeec</span></span>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <span class="badge feature">feature</span>
+                    <span class="impact high">high impact</span>
+                </div>
+            </div>
+
+
+            <div style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 6px;">
+                <pre style="white-space: pre-wrap; font-family: inherit; color: #495057;">* checkpoint
+
+* use workingDir
+
+* working now
+
+* folder neater
+
+* tidy up
+
+* tidying up more:</pre>
+            </div>
+
+
+            <div class="key-changes">
+                <h3>🔍 Key Changes</h3>
+                <ul>
+
+                    <li>Updated documentation in Goose/ChatView.swift</li>
+
+                    <li>Updated documentation in Goose/NodeFocus.swift</li>
+
+                    <li>Updated documentation in Goose/SessionsCard.swift</li>
+
+                    <li>Updated documentation in Goose/SidebarView.swift</li>
+
+                    <li>Performance optimization in Goose/SidebarView.swift</li>
+
+                </ul>
+            </div>
+
+            <div class="file-changes">
+
+
+                <div class="file-change">
+                    <div class="file-header">📄 Goose/ChatView.swift</div>
+
+
+                    <div class="hunk-header">@@ -1462,6 +1462,7 @@ struct ChatSession: Identifiable, Codable, Equatable {</div>
+                    <div class="diff-table">
+                        <div class="diff-column old">
+                            <div class="column-header">Before</div>
+
+                            <div class="diff-line context">    let messageCount: Int</div>
+
+                            <div class="diff-line context">    let createdAt: String</div>
+
+                            <div class="diff-line context">    let updatedAt: String</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">&nbsp;</div>
+
+                            <div class="diff-line context">    enum CodingKeys: String, CodingKey {</div>
+
+                            <div class="diff-line context">        case id</div>
+
+                        </div>
+                        <div class="diff-column new">
+                            <div class="column-header">After</div>
+
+                            <div class="diff-line context">    let messageCount: Int</div>
+
+                            <div class="diff-line context">    let createdAt: String</div>
+
+                            <div class="diff-line context">    let updatedAt: String</div>
+
+                            <div class="diff-line add">    let workingDir: String?</div>
+
+                            <div class="diff-line context">&nbsp;</div>
+
+                            <div class="diff-line context">    enum CodingKeys: String, CodingKey {</div>
+
+                            <div class="diff-line context">        case id</div>
+
+                        </div>
+                    </div>
+
+
+                    <div class="hunk-header">@@ -1470,15 +1471,17 @@ struct ChatSession: Identifiable, Codable, Equatable {</div>
+                    <div class="diff-table">
+                        <div class="diff-column old">
+                            <div class="column-header">Before</div>
+
+                            <div class="diff-line context">        case messageCount = &quot;message_count&quot;</div>
+
+                            <div class="diff-line context">        case createdAt = &quot;created_at&quot;</div>
+
+                            <div class="diff-line context">        case updatedAt = &quot;updated_at&quot;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">    }</div>
+
+                            <div class="diff-line context">    </div>
+
+                            <div class="diff-line context">    // Regular memberwise initializer for tests and mocks</div>
+
+                            <div class="diff-line remove">    init(id: String, description: String, messageCount: Int, createdAt: String, updatedAt: String) {</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">        self.id = id</div>
+
+                            <div class="diff-line context">        self.description = description</div>
+
+                            <div class="diff-line context">        self.messageCount = messageCount</div>
+
+                            <div class="diff-line context">        self.createdAt = createdAt</div>
+
+                            <div class="diff-line context">        self.updatedAt = updatedAt</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">    }</div>
+
+                            <div class="diff-line context">    </div>
+
+                            <div class="diff-line context">    // Custom decoder to handle both &#x27;name&#x27; and &#x27;description&#x27; fields</div>
+
+                        </div>
+                        <div class="diff-column new">
+                            <div class="column-header">After</div>
+
+                            <div class="diff-line context">        case messageCount = &quot;message_count&quot;</div>
+
+                            <div class="diff-line context">        case createdAt = &quot;created_at&quot;</div>
+
+                            <div class="diff-line context">        case updatedAt = &quot;updated_at&quot;</div>
+
+                            <div class="diff-line add">        case workingDir = &quot;working_dir&quot;</div>
+
+                            <div class="diff-line context">    }</div>
+
+                            <div class="diff-line context">    </div>
+
+                            <div class="diff-line context">    // Regular memberwise initializer for tests and mocks</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line add">    init(id: String, description: String, messageCount: Int, createdAt: String, updatedAt: String, workingDir: String? = nil) {</div>
+
+                            <div class="diff-line context">        self.id = id</div>
+
+                            <div class="diff-line context">        self.description = description</div>
+
+                            <div class="diff-line context">        self.messageCount = messageCount</div>
+
+                            <div class="diff-line context">        self.createdAt = createdAt</div>
+
+                            <div class="diff-line context">        self.updatedAt = updatedAt</div>
+
+                            <div class="diff-line add">        self.workingDir = workingDir</div>
+
+                            <div class="diff-line context">    }</div>
+
+                            <div class="diff-line context">    </div>
+
+                            <div class="diff-line context">    // Custom decoder to handle both &#x27;name&#x27; and &#x27;description&#x27; fields</div>
+
+                        </div>
+                    </div>
+
+
+                    <div class="hunk-header">@@ -1498,6 +1501,7 @@ struct ChatSession: Identifiable, Codable, Equatable {</div>
+                    <div class="diff-table">
+                        <div class="diff-column old">
+                            <div class="column-header">Before</div>
+
+                            <div class="diff-line context">        messageCount = try container.decode(Int.self, forKey: .messageCount)</div>
+
+                            <div class="diff-line context">        createdAt = try container.decode(String.self, forKey: .createdAt)</div>
+
+                            <div class="diff-line context">        updatedAt = try container.decode(String.self, forKey: .updatedAt)</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">    }</div>
+
+                            <div class="diff-line context">    </div>
+
+                            <div class="diff-line context">    // Custom encoder to support both formats</div>
+
+                        </div>
+                        <div class="diff-column new">
+                            <div class="column-header">After</div>
+
+                            <div class="diff-line context">        messageCount = try container.decode(Int.self, forKey: .messageCount)</div>
+
+                            <div class="diff-line context">        createdAt = try container.decode(String.self, forKey: .createdAt)</div>
+
+                            <div class="diff-line context">        updatedAt = try container.decode(String.self, forKey: .updatedAt)</div>
+
+                            <div class="diff-line add">        workingDir = try? container.decode(String.self, forKey: .workingDir)</div>
+
+                            <div class="diff-line context">    }</div>
+
+                            <div class="diff-line context">    </div>
+
+                            <div class="diff-line context">    // Custom encoder to support both formats</div>
+
+                        </div>
+                    </div>
+
+
+                    <div class="hunk-header">@@ -1508,13 +1512,15 @@ struct ChatSession: Identifiable, Codable, Equatable {</div>
+                    <div class="diff-table">
+                        <div class="diff-column old">
+                            <div class="column-header">Before</div>
+
+                            <div class="diff-line context">        try container.encode(messageCount, forKey: .messageCount)</div>
+
+                            <div class="diff-line context">        try container.encode(createdAt, forKey: .createdAt)</div>
+
+                            <div class="diff-line context">        try container.encode(updatedAt, forKey: .updatedAt)</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">    }</div>
+
+                            <div class="diff-line context">    </div>
+
+                            <div class="diff-line context">    static func == (lhs: ChatSession, rhs: ChatSession) -&gt; Bool {</div>
+
+                            <div class="diff-line context">        lhs.id == rhs.id &amp;&amp;</div>
+
+                            <div class="diff-line context">        lhs.description == rhs.description &amp;&amp;</div>
+
+                            <div class="diff-line context">        lhs.messageCount == rhs.messageCount &amp;&amp;</div>
+
+                            <div class="diff-line remove">        lhs.updatedAt == rhs.updatedAt</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">    }</div>
+
+                            <div class="diff-line context">&nbsp;</div>
+
+                            <div class="diff-line context">    // Computed properties for UI display</div>
+
+                        </div>
+                        <div class="diff-column new">
+                            <div class="column-header">After</div>
+
+                            <div class="diff-line context">        try container.encode(messageCount, forKey: .messageCount)</div>
+
+                            <div class="diff-line context">        try container.encode(createdAt, forKey: .createdAt)</div>
+
+                            <div class="diff-line context">        try container.encode(updatedAt, forKey: .updatedAt)</div>
+
+                            <div class="diff-line add">        try container.encodeIfPresent(workingDir, forKey: .workingDir)</div>
+
+                            <div class="diff-line context">    }</div>
+
+                            <div class="diff-line context">    </div>
+
+                            <div class="diff-line context">    static func == (lhs: ChatSession, rhs: ChatSession) -&gt; Bool {</div>
+
+                            <div class="diff-line context">        lhs.id == rhs.id &amp;&amp;</div>
+
+                            <div class="diff-line context">        lhs.description == rhs.description &amp;&amp;</div>
+
+                            <div class="diff-line context">        lhs.messageCount == rhs.messageCount &amp;&amp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line add">        lhs.updatedAt == rhs.updatedAt &amp;&amp;</div>
+
+                            <div class="diff-line add">        lhs.workingDir == rhs.workingDir</div>
+
+                            <div class="diff-line context">    }</div>
+
+                            <div class="diff-line context">&nbsp;</div>
+
+                            <div class="diff-line context">    // Computed properties for UI display</div>
+
+                        </div>
+                    </div>
+
+
+                    <div class="hunk-header">@@ -1531,6 +1537,18 @@ struct ChatSession: Identifiable, Codable, Equatable {</div>
+                    <div class="diff-table">
+                        <div class="diff-column old">
+                            <div class="column-header">Before</div>
+
+                            <div class="diff-line context">        let formatter = ISO8601DateFormatter()</div>
+
+                            <div class="diff-line context">        return formatter.date(from: updatedAt) ?? Date()</div>
+
+                            <div class="diff-line context">    }</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">}</div>
+
+                            <div class="diff-line context">&nbsp;</div>
+
+                            <div class="diff-line context">// MARK: - Tool Call Data Structures</div>
+
+                        </div>
+                        <div class="diff-column new">
+                            <div class="column-header">After</div>
+
+                            <div class="diff-line context">        let formatter = ISO8601DateFormatter()</div>
+
+                            <div class="diff-line context">        return formatter.date(from: updatedAt) ?? Date()</div>
+
+                            <div class="diff-line context">    }</div>
+
+                            <div class="diff-line add">    </div>
+
+                            <div class="diff-line add">    // Extract just the directory name from the full path</div>
+
+                            <div class="diff-line add">    var directoryName: String {</div>
+
+                            <div class="diff-line add">        guard let workingDir = workingDir else { return &quot;Unknown&quot; }</div>
+
+                            <div class="diff-line add">        let components = workingDir.split(separator: &quot;/&quot;)</div>
+
+                            <div class="diff-line add">        return String(components.last ?? &quot;Unknown&quot;)</div>
+
+                            <div class="diff-line add">    }</div>
+
+                            <div class="diff-line add">    </div>
+
+                            <div class="diff-line add">    // Get the full path for grouping (fallback to &quot;Unknown&quot; if nil)</div>
+
+                            <div class="diff-line add">    var groupingPath: String {</div>
+
+                            <div class="diff-line add">        return workingDir ?? &quot;Unknown&quot;</div>
+
+                            <div class="diff-line add">    }</div>
+
+                            <div class="diff-line context">}</div>
+
+                            <div class="diff-line context">&nbsp;</div>
+
+                            <div class="diff-line context">// MARK: - Tool Call Data Structures</div>
+
+                        </div>
+                    </div>
+
+                </div>
+
+
+                <div class="file-change">
+                    <div class="file-header">📄 Goose/NodeFocus.swift</div>
+
+
+                    <div class="hunk-header">@@ -18,6 +18,18 @@ struct NodeFocus: View {</div>
+                    <div class="diff-table">
+                        <div class="diff-column old">
+                            <div class="column-header">Before</div>
+
+                            <div class="diff-line context">                    Text(&quot;\(session.messageCount) message\(session.messageCount == 1 ? &quot;&quot; : &quot;s&quot;)&quot;)</div>
+
+                            <div class="diff-line context">                        .font(.system(size: 11))</div>
+
+                            <div class="diff-line context">                        .foregroundColor(.secondary)</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">                }</div>
+
+                            <div class="diff-line context">                </div>
+
+                            <div class="diff-line context">                Spacer()</div>
+
+                        </div>
+                        <div class="diff-column new">
+                            <div class="column-header">After</div>
+
+                            <div class="diff-line context">                    Text(&quot;\(session.messageCount) message\(session.messageCount == 1 ? &quot;&quot; : &quot;s&quot;)&quot;)</div>
+
+                            <div class="diff-line context">                        .font(.system(size: 11))</div>
+
+                            <div class="diff-line context">                        .foregroundColor(.secondary)</div>
+
+                            <div class="diff-line add">                    </div>
+
+                            <div class="diff-line add">                    // Working directory</div>
+
+                            <div class="diff-line add">                    if let workingDir = session.workingDir {</div>
+
+                            <div class="diff-line add">                        HStack(spacing: 4) {</div>
+
+                            <div class="diff-line add">                            Image(systemName: &quot;folder&quot;)</div>
+
+                            <div class="diff-line add">                                .font(.system(size: 9))</div>
+
+                            <div class="diff-line add">                            Text(session.directoryName)</div>
+
+                            <div class="diff-line add">                                .font(.system(size: 10))</div>
+
+                            <div class="diff-line add">                                .lineLimit(1)</div>
+
+                            <div class="diff-line add">                        }</div>
+
+                            <div class="diff-line add">                        .foregroundColor(.secondary.opacity(0.8))</div>
+
+                            <div class="diff-line add">                    }</div>
+
+                            <div class="diff-line context">                }</div>
+
+                            <div class="diff-line context">                </div>
+
+                            <div class="diff-line context">                Spacer()</div>
+
+                        </div>
+                    </div>
+
+
+                    <div class="hunk-header">@@ -67,7 +79,8 @@ struct NodeFocus: View {</div>
+                    <div class="diff-table">
+                        <div class="diff-column old">
+                            <div class="column-header">Before</div>
+
+                            <div class="diff-line context">                description: &quot;Working on iOS app features&quot;,</div>
+
+                            <div class="diff-line context">                messageCount: 12,</div>
+
+                            <div class="diff-line context">                createdAt: &quot;2024-01-15T10:30:00Z&quot;,</div>
+
+                            <div class="diff-line remove">                updatedAt: &quot;2024-01-15T14:45:00Z&quot;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">            ),</div>
+
+                            <div class="diff-line context">            onDismiss: {</div>
+
+                            <div class="diff-line context">                print(&quot;Dismiss tapped&quot;)</div>
+
+                        </div>
+                        <div class="diff-column new">
+                            <div class="column-header">After</div>
+
+                            <div class="diff-line context">                description: &quot;Working on iOS app features&quot;,</div>
+
+                            <div class="diff-line context">                messageCount: 12,</div>
+
+                            <div class="diff-line context">                createdAt: &quot;2024-01-15T10:30:00Z&quot;,</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line add">                updatedAt: &quot;2024-01-15T14:45:00Z&quot;,</div>
+
+                            <div class="diff-line add">                workingDir: &quot;/Users/test/project&quot;</div>
+
+                            <div class="diff-line context">            ),</div>
+
+                            <div class="diff-line context">            onDismiss: {</div>
+
+                            <div class="diff-line context">                print(&quot;Dismiss tapped&quot;)</div>
+
+                        </div>
+                    </div>
+
+                </div>
+
+
+                <div class="file-change">
+                    <div class="file-header">📄 Goose/NodeMatrix.swift</div>
+
+
+                    <div class="hunk-header">@@ -861,12 +861,12 @@ struct DayContentView: View {</div>
+                    <div class="diff-table">
+                        <div class="diff-column old">
+                            <div class="column-header">Before</div>
+
+                            <div class="diff-line context">                NodeMatrix(</div>
+
+                            <div class="diff-line context">                    sessions: [</div>
+
+                            <div class="diff-line context">                        // Today</div>
+
+                            <div class="diff-line remove">                        ChatSession(id: &quot;1&quot;, description: &quot;Small Session&quot;, messageCount: 3, createdAt: dateString(daysAgo: 0, hoursAgo: 8), updatedAt: dateString(daysAgo: 0, hoursAgo: 8)),</div>
+
+                            <div class="diff-line remove">                        ChatSession(id: &quot;2&quot;, description: &quot;Medium Session&quot;, messageCount: 15, createdAt: dateString(daysAgo: 0, hoursAgo: 7, minutesOffset: 30), updatedAt: dateString(daysAgo: 0, hoursAgo: 7, minutesOffset: 30)),</div>
+
+                            <div class="diff-line remove">                        ChatSession(id: &quot;3&quot;, description: &quot;Large Session&quot;, messageCount: 45, createdAt: dateString(daysAgo: 0, hoursAgo: 7), updatedAt: dateString(daysAgo: 0, hoursAgo: 7)),</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">                        // Yesterday</div>
+
+                            <div class="diff-line remove">                        ChatSession(id: &quot;4&quot;, description: &quot;Yesterday 1&quot;, messageCount: 10, createdAt: dateString(daysAgo: 1, hoursAgo: 5), updatedAt: dateString(daysAgo: 1, hoursAgo: 5)),</div>
+
+                            <div class="diff-line remove">                        ChatSession(id: &quot;5&quot;, description: &quot;Yesterday 2&quot;, messageCount: 25, createdAt: dateString(daysAgo: 1, hoursAgo: 3), updatedAt: dateString(daysAgo: 1, hoursAgo: 3)),</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">                    ],</div>
+
+                            <div class="diff-line context">                    selectedSessionId: &quot;2&quot;,</div>
+
+                            <div class="diff-line context">                    onNodeTap: { session, position in</div>
+
+                        </div>
+                        <div class="diff-column new">
+                            <div class="column-header">After</div>
+
+                            <div class="diff-line context">                NodeMatrix(</div>
+
+                            <div class="diff-line context">                    sessions: [</div>
+
+                            <div class="diff-line context">                        // Today</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line add">                        ChatSession(id: &quot;1&quot;, description: &quot;Small Session&quot;, messageCount: 3, createdAt: dateString(daysAgo: 0, hoursAgo: 8), updatedAt: dateString(daysAgo: 0, hoursAgo: 8), workingDir: nil),</div>
+
+                            <div class="diff-line add">                        ChatSession(id: &quot;2&quot;, description: &quot;Medium Session&quot;, messageCount: 15, createdAt: dateString(daysAgo: 0, hoursAgo: 7, minutesOffset: 30), updatedAt: dateString(daysAgo: 0, hoursAgo: 7, minutesOffset: 30), workingDir: nil),</div>
+
+                            <div class="diff-line add">                        ChatSession(id: &quot;3&quot;, description: &quot;Large Session&quot;, messageCount: 45, createdAt: dateString(daysAgo: 0, hoursAgo: 7), updatedAt: dateString(daysAgo: 0, hoursAgo: 7), workingDir: nil),</div>
+
+                            <div class="diff-line context">                        // Yesterday</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line add">                        ChatSession(id: &quot;4&quot;, description: &quot;Yesterday 1&quot;, messageCount: 10, createdAt: dateString(daysAgo: 1, hoursAgo: 5), updatedAt: dateString(daysAgo: 1, hoursAgo: 5), workingDir: nil),</div>
+
+                            <div class="diff-line add">                        ChatSession(id: &quot;5&quot;, description: &quot;Yesterday 2&quot;, messageCount: 25, createdAt: dateString(daysAgo: 1, hoursAgo: 3), updatedAt: dateString(daysAgo: 1, hoursAgo: 3), workingDir: nil),</div>
+
+                            <div class="diff-line context">                    ],</div>
+
+                            <div class="diff-line context">                    selectedSessionId: &quot;2&quot;,</div>
+
+                            <div class="diff-line context">                    onNodeTap: { session, position in</div>
+
+                        </div>
+                    </div>
+
+                </div>
+
+
+                <div class="file-change">
+                    <div class="file-header">📄 Goose/SessionsCard.swift</div>
+
+
+                    <div class="hunk-header">@@ -88,6 +88,19 @@ struct SessionsCard: View {</div>
+                    <div class="diff-table">
+                        <div class="diff-column old">
+                            <div class="column-header">Before</div>
+
+                            <div class="diff-line context">                    Text(timeAgo)</div>
+
+                            <div class="diff-line context">                        .font(.system(size: 14))</div>
+
+                            <div class="diff-line context">                        .foregroundColor(.secondary)</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">                }</div>
+
+                            <div class="diff-line context">                .transition(.opacity.combined(with: .move(edge: .top)))</div>
+
+                            <div class="diff-line context">                </div>
+
+                        </div>
+                        <div class="diff-column new">
+                            <div class="column-header">After</div>
+
+                            <div class="diff-line context">                    Text(timeAgo)</div>
+
+                            <div class="diff-line context">                        .font(.system(size: 14))</div>
+
+                            <div class="diff-line context">                        .foregroundColor(.secondary)</div>
+
+                            <div class="diff-line add">                    </div>
+
+                            <div class="diff-line add">                    // Working directory</div>
+
+                            <div class="diff-line add">                    if let workingDir = session.workingDir {</div>
+
+                            <div class="diff-line add">                        HStack(spacing: 6) {</div>
+
+                            <div class="diff-line add">                            Image(systemName: &quot;folder&quot;)</div>
+
+                            <div class="diff-line add">                                .font(.system(size: 12))</div>
+
+                            <div class="diff-line add">                            Text(workingDir)</div>
+
+                            <div class="diff-line add">                                .font(.system(size: 13))</div>
+
+                            <div class="diff-line add">                                .lineLimit(1)</div>
+
+                            <div class="diff-line add">                                .truncationMode(.middle)</div>
+
+                            <div class="diff-line add">                        }</div>
+
+                            <div class="diff-line add">                        .foregroundColor(.secondary.opacity(0.8))</div>
+
+                            <div class="diff-line add">                    }</div>
+
+                            <div class="diff-line context">                }</div>
+
+                            <div class="diff-line context">                .transition(.opacity.combined(with: .move(edge: .top)))</div>
+
+                            <div class="diff-line context">                </div>
+
+                        </div>
+                    </div>
+
+
+                    <div class="hunk-header">@@ -187,7 +200,8 @@ struct SessionsCard: View {</div>
+                    <div class="diff-table">
+                        <div class="diff-column old">
+                            <div class="column-header">Before</div>
+
+                            <div class="diff-line context">                    description: &quot;Building a SwiftUI app with node visualization&quot;,</div>
+
+                            <div class="diff-line context">                    messageCount: 42,</div>
+
+                            <div class="diff-line context">                    createdAt: formatter.string(from: twoHoursAgo),</div>
+
+                            <div class="diff-line remove">                    updatedAt: formatter.string(from: twoHoursAgo)</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">                ),</div>
+
+                            <div class="diff-line context">                onClose: {</div>
+
+                            <div class="diff-line context">                    print(&quot;Close tapped&quot;)</div>
+
+                        </div>
+                        <div class="diff-column new">
+                            <div class="column-header">After</div>
+
+                            <div class="diff-line context">                    description: &quot;Building a SwiftUI app with node visualization&quot;,</div>
+
+                            <div class="diff-line context">                    messageCount: 42,</div>
+
+                            <div class="diff-line context">                    createdAt: formatter.string(from: twoHoursAgo),</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line add">                    updatedAt: formatter.string(from: twoHoursAgo),</div>
+
+                            <div class="diff-line add">                    workingDir: nil</div>
+
+                            <div class="diff-line context">                ),</div>
+
+                            <div class="diff-line context">                onClose: {</div>
+
+                            <div class="diff-line context">                    print(&quot;Close tapped&quot;)</div>
+
+                        </div>
+                    </div>
+
+                </div>
+
+
+                <div class="file-change">
+                    <div class="file-header">📄 Goose/SidebarView.swift</div>
+
+
+                    <div class="hunk-header">@@ -18,11 +18,26 @@ struct SidebarView: View {</div>
+                    <div class="diff-table">
+                        <div class="diff-column old">
+                            <div class="column-header">Before</div>
+
+                            <div class="diff-line context">    let isLoadingMore: Bool</div>
+
+                            <div class="diff-line context">    let hasMoreSessions: Bool</div>
+
+                            <div class="diff-line context">    </div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">    @StateObject private var agentStorage = AgentStorage.shared</div>
+
+                            <div class="diff-line context">    @State private var showingRenameDialog = false</div>
+
+                            <div class="diff-line context">    @State private var agentToRename: AgentConfiguration?</div>
+
+                            <div class="diff-line context">    @State private var newAgentName = &quot;&quot;</div>
+
+                            <div class="diff-line context">    </div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">    // Dynamic sidebar width based on device</div>
+
+                            <div class="diff-line context">    private var sidebarWidth: CGFloat {</div>
+
+                            <div class="diff-line context">        let screenWidth = UIScreen.main.bounds.width</div>
+
+                        </div>
+                        <div class="diff-column new">
+                            <div class="column-header">After</div>
+
+                            <div class="diff-line context">    let isLoadingMore: Bool</div>
+
+                            <div class="diff-line context">    let hasMoreSessions: Bool</div>
+
+                            <div class="diff-line context">    </div>
+
+                            <div class="diff-line add">    // Grouping mode state</div>
+
+                            <div class="diff-line add">    @State private var groupByDirectory: Bool = false</div>
+
+                            <div class="diff-line add">    </div>
+
+                            <div class="diff-line add">    // Cached groupings to avoid recomputation on every render</div>
+
+                            <div class="diff-line add">    @State private var cachedGroupedByDate: [(String, [ChatSession])] = []</div>
+
+                            <div class="diff-line add">    @State private var cachedGroupedByDirectory: [(String, [ChatSession])] = []</div>
+
+                            <div class="diff-line add">    @State private var hasWorkingDirs: Bool = false</div>
+
+                            <div class="diff-line add">    </div>
+
+                            <div class="diff-line add">    // Agent management from main branch</div>
+
+                            <div class="diff-line context">    @StateObject private var agentStorage = AgentStorage.shared</div>
+
+                            <div class="diff-line context">    @State private var showingRenameDialog = false</div>
+
+                            <div class="diff-line context">    @State private var agentToRename: AgentConfiguration?</div>
+
+                            <div class="diff-line context">    @State private var newAgentName = &quot;&quot;</div>
+
+                            <div class="diff-line context">    </div>
+
+                            <div class="diff-line add">    // Static ISO8601 formatter to avoid recreating on each computation</div>
+
+                            <div class="diff-line add">    private static let iso8601Formatter: ISO8601DateFormatter = {</div>
+
+                            <div class="diff-line add">        let formatter = ISO8601DateFormatter()</div>
+
+                            <div class="diff-line add">        formatter.formatOptions = [.withInternetDateTime]</div>
+
+                            <div class="diff-line add">        return formatter</div>
+
+                            <div class="diff-line add">    }()</div>
+
+                            <div class="diff-line context">    // Dynamic sidebar width based on device</div>
+
+                            <div class="diff-line context">    private var sidebarWidth: CGFloat {</div>
+
+                            <div class="diff-line context">        let screenWidth = UIScreen.main.bounds.width</div>
+
+                        </div>
+                    </div>
+
+
+                    <div class="hunk-header">@@ -38,17 +53,15 @@ struct SidebarView: View {</div>
+                    <div class="diff-table">
+                        <div class="diff-column old">
+                            <div class="column-header">Before</div>
+
+                            <div class="diff-line context">        UIDevice.current.userInterfaceIdiom == .pad</div>
+
+                            <div class="diff-line context">    }</div>
+
+                            <div class="diff-line context">    </div>
+
+                            <div class="diff-line remove">    // Group sessions by date</div>
+
+                            <div class="diff-line remove">    private var groupedSessions: [(String, [ChatSession])] {</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">        let calendar = Calendar.current  // Use local timezone</div>
+
+                            <div class="diff-line remove">        let formatter = ISO8601DateFormatter()</div>
+
+                            <div class="diff-line remove">        formatter.formatOptions = [.withInternetDateTime]</div>
+
+                            <div class="diff-line context">        </div>
+
+                            <div class="diff-line context">        // Group sessions by date</div>
+
+                            <div class="diff-line context">        var groups: [Date: [ChatSession]] = [:]</div>
+
+                            <div class="diff-line context">        </div>
+
+                            <div class="diff-line context">        for session in cachedSessions {</div>
+
+                            <div class="diff-line remove">            guard let sessionDate = formatter.date(from: session.updatedAt) else {</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">                continue</div>
+
+                            <div class="diff-line context">            }</div>
+
+                            <div class="diff-line context">            </div>
+
+                        </div>
+                        <div class="diff-column new">
+                            <div class="column-header">After</div>
+
+                            <div class="diff-line context">        UIDevice.current.userInterfaceIdiom == .pad</div>
+
+                            <div class="diff-line context">    }</div>
+
+                            <div class="diff-line context">    </div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line add">    // Compute sessions grouped by date</div>
+
+                            <div class="diff-line add">    private func computeGroupedByDate() -&gt; [(String, [ChatSession])] {</div>
+
+                            <div class="diff-line context">        let calendar = Calendar.current  // Use local timezone</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">        </div>
+
+                            <div class="diff-line context">        // Group sessions by date</div>
+
+                            <div class="diff-line context">        var groups: [Date: [ChatSession]] = [:]</div>
+
+                            <div class="diff-line context">        </div>
+
+                            <div class="diff-line context">        for session in cachedSessions {</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line add">            guard let sessionDate = Self.iso8601Formatter.date(from: session.updatedAt) else {</div>
+
+                            <div class="diff-line context">                continue</div>
+
+                            <div class="diff-line context">            }</div>
+
+                            <div class="diff-line context">            </div>
+
+                        </div>
+                    </div>
+
+
+                    <div class="hunk-header">@@ -66,8 +79,8 @@ struct SidebarView: View {</div>
+                    <div class="diff-table">
+                        <div class="diff-column old">
+                            <div class="column-header">Before</div>
+
+                            <div class="diff-line context">        return sortedGroups.map { date, sessions in</div>
+
+                            <div class="diff-line context">            let label = formatDateHeader(date)</div>
+
+                            <div class="diff-line context">            let sortedSessions = sessions.sorted { s1, s2 in</div>
+
+                            <div class="diff-line remove">                guard let date1 = formatter.date(from: s1.updatedAt),</div>
+
+                            <div class="diff-line remove">                      let date2 = formatter.date(from: s2.updatedAt) else {</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">                    return false</div>
+
+                            <div class="diff-line context">                }</div>
+
+                            <div class="diff-line context">                return date1 &gt; date2</div>
+
+                        </div>
+                        <div class="diff-column new">
+                            <div class="column-header">After</div>
+
+                            <div class="diff-line context">        return sortedGroups.map { date, sessions in</div>
+
+                            <div class="diff-line context">            let label = formatDateHeader(date)</div>
+
+                            <div class="diff-line context">            let sortedSessions = sessions.sorted { s1, s2 in</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line add">                guard let date1 = Self.iso8601Formatter.date(from: s1.updatedAt),</div>
+
+                            <div class="diff-line add">                      let date2 = Self.iso8601Formatter.date(from: s2.updatedAt) else {</div>
+
+                            <div class="diff-line context">                    return false</div>
+
+                            <div class="diff-line context">                }</div>
+
+                            <div class="diff-line context">                return date1 &gt; date2</div>
+
+                        </div>
+                    </div>
+
+
+                    <div class="hunk-header">@@ -89,6 +102,74 @@ struct SidebarView: View {</div>
+                    <div class="diff-table">
+                        <div class="diff-column old">
+                            <div class="column-header">Before</div>
+
+                            <div class="diff-line context">            return formatter.string(from: date).uppercased()</div>
+
+                            <div class="diff-line context">        }</div>
+
+                            <div class="diff-line context">    }</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">&nbsp;</div>
+
+                            <div class="diff-line context">    var body: some View {</div>
+
+                            <div class="diff-line context">        ZStack {</div>
+
+                        </div>
+                        <div class="diff-column new">
+                            <div class="column-header">After</div>
+
+                            <div class="diff-line context">            return formatter.string(from: date).uppercased()</div>
+
+                            <div class="diff-line context">        }</div>
+
+                            <div class="diff-line context">    }</div>
+
+                            <div class="diff-line add">    </div>
+
+                            <div class="diff-line add">    // Compute sessions grouped by working directory</div>
+
+                            <div class="diff-line add">    private func computeGroupedByDirectory() -&gt; [(String, [ChatSession])] {</div>
+
+                            <div class="diff-line add">        // Group sessions by working directory</div>
+
+                            <div class="diff-line add">        var groups: [String: [ChatSession]] = [:]</div>
+
+                            <div class="diff-line add">        </div>
+
+                            <div class="diff-line add">        for session in cachedSessions {</div>
+
+                            <div class="diff-line add">            let path = session.groupingPath</div>
+
+                            <div class="diff-line add">            </div>
+
+                            <div class="diff-line add">            if groups[path] == nil {</div>
+
+                            <div class="diff-line add">                groups[path] = []</div>
+
+                            <div class="diff-line add">            }</div>
+
+                            <div class="diff-line add">            groups[path]?.append(session)</div>
+
+                            <div class="diff-line add">        }</div>
+
+                            <div class="diff-line add">        </div>
+
+                            <div class="diff-line add">        // Sort groups by most recent activity (newest first), but put &quot;Unknown&quot; last</div>
+
+                            <div class="diff-line add">        let sortedGroups = groups.sorted { group1, group2 in</div>
+
+                            <div class="diff-line add">            // Always put &quot;Unknown&quot; at the end</div>
+
+                            <div class="diff-line add">            if group1.key == &quot;Unknown&quot; { return false }</div>
+
+                            <div class="diff-line add">            if group2.key == &quot;Unknown&quot; { return true }</div>
+
+                            <div class="diff-line add">            </div>
+
+                            <div class="diff-line add">            // Find the most recent session in each group</div>
+
+                            <div class="diff-line add">            let mostRecent1 = group1.value.compactMap { Self.iso8601Formatter.date(from: $0.updatedAt) }.max()</div>
+
+                            <div class="diff-line add">            let mostRecent2 = group2.value.compactMap { Self.iso8601Formatter.date(from: $0.updatedAt) }.max()</div>
+
+                            <div class="diff-line add">            </div>
+
+                            <div class="diff-line add">            // Sort by most recent activity (newer groups first)</div>
+
+                            <div class="diff-line add">            if let date1 = mostRecent1, let date2 = mostRecent2 {</div>
+
+                            <div class="diff-line add">                return date1 &gt; date2</div>
+
+                            <div class="diff-line add">            }</div>
+
+                            <div class="diff-line add">            // If one has no valid dates, put it after the one that does</div>
+
+                            <div class="diff-line add">            if mostRecent1 != nil { return true }</div>
+
+                            <div class="diff-line add">            if mostRecent2 != nil { return false }</div>
+
+                            <div class="diff-line add">            // Both have no dates, alphabetical fallback</div>
+
+                            <div class="diff-line add">            return group1.key &lt; group2.key</div>
+
+                            <div class="diff-line add">        }</div>
+
+                            <div class="diff-line add">        </div>
+
+                            <div class="diff-line add">        // Return groups with formatted labels and sorted sessions</div>
+
+                            <div class="diff-line add">        return sortedGroups.map { path, sessions in</div>
+
+                            <div class="diff-line add">            // Use the full path for the label in folder mode</div>
+
+                            <div class="diff-line add">            let label = path.uppercased()</div>
+
+                            <div class="diff-line add">            </div>
+
+                            <div class="diff-line add">            // Sort sessions within each group by updated time (newest first)</div>
+
+                            <div class="diff-line add">            let sortedSessions = sessions.sorted { s1, s2 in</div>
+
+                            <div class="diff-line add">                guard let date1 = Self.iso8601Formatter.date(from: s1.updatedAt),</div>
+
+                            <div class="diff-line add">                      let date2 = Self.iso8601Formatter.date(from: s2.updatedAt) else {</div>
+
+                            <div class="diff-line add">                    return false</div>
+
+                            <div class="diff-line add">                }</div>
+
+                            <div class="diff-line add">                return date1 &gt; date2</div>
+
+                            <div class="diff-line add">            }</div>
+
+                            <div class="diff-line add">            </div>
+
+                            <div class="diff-line add">            // Only take the most recent 3 sessions from each folder</div>
+
+                            <div class="diff-line add">            let limitedSessions = Array(sortedSessions.prefix(3))</div>
+
+                            <div class="diff-line add">            </div>
+
+                            <div class="diff-line add">            return (label, limitedSessions)</div>
+
+                            <div class="diff-line add">        }</div>
+
+                            <div class="diff-line add">    }</div>
+
+                            <div class="diff-line add">    </div>
+
+                            <div class="diff-line add">    // Update cached groupings when sessions change</div>
+
+                            <div class="diff-line add">    private func updateGroupings() {</div>
+
+                            <div class="diff-line add">        cachedGroupedByDate = computeGroupedByDate()</div>
+
+                            <div class="diff-line add">        cachedGroupedByDirectory = computeGroupedByDirectory()</div>
+
+                            <div class="diff-line add">        hasWorkingDirs = cachedSessions.contains(where: { $0.workingDir != nil &amp;&amp; !$0.workingDir!.isEmpty })</div>
+
+                            <div class="diff-line add">    }</div>
+
+                            <div class="diff-line add">    </div>
+
+                            <div class="diff-line add">    // Get the appropriate grouping based on mode</div>
+
+                            <div class="diff-line add">    private var currentGrouping: [(String, [ChatSession])] {</div>
+
+                            <div class="diff-line add">        return groupByDirectory ? cachedGroupedByDirectory : cachedGroupedByDate</div>
+
+                            <div class="diff-line add">    }</div>
+
+                            <div class="diff-line context">&nbsp;</div>
+
+                            <div class="diff-line context">    var body: some View {</div>
+
+                            <div class="diff-line context">        ZStack {</div>
+
+                        </div>
+                    </div>
+
+
+                    <div class="hunk-header">@@ -209,18 +290,69 @@ struct SidebarView: View {</div>
+                    <div class="diff-table">
+                        <div class="diff-column old">
+                            <div class="column-header">Before</div>
+
+                            <div class="diff-line context">                            Color.clear</div>
+
+                            <div class="diff-line context">                                .frame(height: 24)</div>
+
+                            <div class="diff-line context">                            </div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">                            // Push sessions to bottom if fewer than 5</div>
+
+                            <div class="diff-line context">                            if cachedSessions.count &lt; 5 {</div>
+
+                            <div class="diff-line context">                                Color.clear</div>
+
+                            <div class="diff-line context">                                    .frame(height: scrollGeometry.size.height * 0.3)</div>
+
+                            <div class="diff-line context">                            }</div>
+
+                            <div class="diff-line context">&nbsp;</div>
+
+                            <div class="diff-line remove">                            // Grouped sessions with date headers</div>
+
+                            <div class="diff-line remove">                            ForEach(groupedSessions, id: \.0) { dateLabel, sessions in</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">                                // Date section header</div>
+
+                            <div class="diff-line context">                                DateSectionHeader(label: dateLabel)</div>
+
+                            <div class="diff-line context">                                </div>
+
+                            <div class="diff-line remove">                                // Sessions for this date</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">                                ForEach(sessions) { session in</div>
+
+                            <div class="diff-line context">                                    SessionRowView(session: session)</div>
+
+                            <div class="diff-line context">                                        .onTapGesture {</div>
+
+                        </div>
+                        <div class="diff-column new">
+                            <div class="column-header">After</div>
+
+                            <div class="diff-line context">                            Color.clear</div>
+
+                            <div class="diff-line context">                                .frame(height: 24)</div>
+
+                            <div class="diff-line context">                            </div>
+
+                            <div class="diff-line add">                            // Group by toggle - only show if there are sessions with non-empty working directories</div>
+
+                            <div class="diff-line add">                            if hasWorkingDirs {</div>
+
+                            <div class="diff-line add">                                HStack(spacing: 8) {</div>
+
+                            <div class="diff-line add">                                    Button(action: {</div>
+
+                            <div class="diff-line add">                                        withAnimation(.easeInOut(duration: 0.2)) {</div>
+
+                            <div class="diff-line add">                                            groupByDirectory = false</div>
+
+                            <div class="diff-line add">                                        }</div>
+
+                            <div class="diff-line add">                                    }) {</div>
+
+                            <div class="diff-line add">                                        HStack(spacing: 4) {</div>
+
+                            <div class="diff-line add">                                            Image(systemName: &quot;calendar&quot;)</div>
+
+                            <div class="diff-line add">                                                .font(.system(size: 12))</div>
+
+                            <div class="diff-line add">                                            Text(&quot;Date&quot;)</div>
+
+                            <div class="diff-line add">                                                .font(.system(size: 13, weight: groupByDirectory ? .regular : .semibold))</div>
+
+                            <div class="diff-line add">                                        }</div>
+
+                            <div class="diff-line add">                                        .foregroundColor(groupByDirectory ? .secondary : .primary)</div>
+
+                            <div class="diff-line add">                                        .padding(.horizontal, 12)</div>
+
+                            <div class="diff-line add">                                        .padding(.vertical, 6)</div>
+
+                            <div class="diff-line add">                                        .background(groupByDirectory ? Color.clear : Color(.systemGray5))</div>
+
+                            <div class="diff-line add">                                        .cornerRadius(8)</div>
+
+                            <div class="diff-line add">                                    }</div>
+
+                            <div class="diff-line add">                                    .buttonStyle(.plain)</div>
+
+                            <div class="diff-line add">                                    </div>
+
+                            <div class="diff-line add">                                    Button(action: {</div>
+
+                            <div class="diff-line add">                                        withAnimation(.easeInOut(duration: 0.2)) {</div>
+
+                            <div class="diff-line add">                                            groupByDirectory = true</div>
+
+                            <div class="diff-line add">                                        }</div>
+
+                            <div class="diff-line add">                                    }) {</div>
+
+                            <div class="diff-line add">                                        HStack(spacing: 4) {</div>
+
+                            <div class="diff-line add">                                            Image(systemName: &quot;folder&quot;)</div>
+
+                            <div class="diff-line add">                                                .font(.system(size: 12))</div>
+
+                            <div class="diff-line add">                                            Text(&quot;Folder&quot;)</div>
+
+                            <div class="diff-line add">                                                .font(.system(size: 13, weight: groupByDirectory ? .semibold : .regular))</div>
+
+                            <div class="diff-line add">                                        }</div>
+
+                            <div class="diff-line add">                                        .foregroundColor(groupByDirectory ? .primary : .secondary)</div>
+
+                            <div class="diff-line add">                                        .padding(.horizontal, 12)</div>
+
+                            <div class="diff-line add">                                        .padding(.vertical, 6)</div>
+
+                            <div class="diff-line add">                                        .background(groupByDirectory ? Color(.systemGray5) : Color.clear)</div>
+
+                            <div class="diff-line add">                                        .cornerRadius(8)</div>
+
+                            <div class="diff-line add">                                    }</div>
+
+                            <div class="diff-line add">                                    .buttonStyle(.plain)</div>
+
+                            <div class="diff-line add">                                    </div>
+
+                            <div class="diff-line add">                                    Spacer()</div>
+
+                            <div class="diff-line add">                                }</div>
+
+                            <div class="diff-line add">                                .padding(.horizontal, 16)</div>
+
+                            <div class="diff-line add">                                .padding(.vertical, 8)</div>
+
+                            <div class="diff-line add">                            }</div>
+
+                            <div class="diff-line add">                            </div>
+
+                            <div class="diff-line add">                            // Spacer to push sessions further down</div>
+
+                            <div class="diff-line add">                            Color.clear</div>
+
+                            <div class="diff-line add">                                .frame(height: 24)</div>
+
+                            <div class="diff-line add">                            </div>
+
+                            <div class="diff-line context">                            // Push sessions to bottom if fewer than 5</div>
+
+                            <div class="diff-line context">                            if cachedSessions.count &lt; 5 {</div>
+
+                            <div class="diff-line context">                                Color.clear</div>
+
+                            <div class="diff-line context">                                    .frame(height: scrollGeometry.size.height * 0.3)</div>
+
+                            <div class="diff-line context">                            }</div>
+
+                            <div class="diff-line context">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line add">                            // Grouped sessions with headers (date or directory)</div>
+
+                            <div class="diff-line add">                            ForEach(currentGrouping, id: \.0) { dateLabel, sessions in</div>
+
+                            <div class="diff-line context">                                // Date section header</div>
+
+                            <div class="diff-line context">                                DateSectionHeader(label: dateLabel)</div>
+
+                            <div class="diff-line context">                                </div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line add">                                // Sessions for this date/directory</div>
+
+                            <div class="diff-line context">                                ForEach(sessions) { session in</div>
+
+                            <div class="diff-line context">                                    SessionRowView(session: session)</div>
+
+                            <div class="diff-line context">                                        .onTapGesture {</div>
+
+                        </div>
+                    </div>
+
+
+                    <div class="hunk-header">@@ -331,6 +463,14 @@ struct SidebarView: View {</div>
+                    <div class="diff-table">
+                        <div class="diff-column old">
+                            <div class="column-header">Before</div>
+
+                            <div class="diff-line context">        } message: {</div>
+
+                            <div class="diff-line context">            Text(&quot;Enter a name for this agent&quot;)</div>
+
+                            <div class="diff-line context">        }</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">    }</div>
+
+                            <div class="diff-line context">}</div>
+
+                            <div class="diff-line context">&nbsp;</div>
+
+                        </div>
+                        <div class="diff-column new">
+                            <div class="column-header">After</div>
+
+                            <div class="diff-line context">        } message: {</div>
+
+                            <div class="diff-line context">            Text(&quot;Enter a name for this agent&quot;)</div>
+
+                            <div class="diff-line context">        }</div>
+
+                            <div class="diff-line add">        .onAppear {</div>
+
+                            <div class="diff-line add">            // Compute groupings on initial load</div>
+
+                            <div class="diff-line add">            updateGroupings()</div>
+
+                            <div class="diff-line add">        }</div>
+
+                            <div class="diff-line add">        .onChange(of: cachedSessions) { _ in</div>
+
+                            <div class="diff-line add">            // Recompute groupings when sessions change</div>
+
+                            <div class="diff-line add">            updateGroupings()</div>
+
+                            <div class="diff-line add">        }</div>
+
+                            <div class="diff-line context">    }</div>
+
+                            <div class="diff-line context">}</div>
+
+                            <div class="diff-line context">&nbsp;</div>
+
+                        </div>
+                    </div>
+
+
+                    <div class="hunk-header">@@ -357,33 +497,51 @@ struct DateSectionHeader: View {</div>
+                    <div class="diff-table">
+                        <div class="diff-column old">
+                            <div class="column-header">Before</div>
+
+                            <div class="diff-line context">// MARK: - Session Row View</div>
+
+                            <div class="diff-line context">struct SessionRowView: View {</div>
+
+                            <div class="diff-line context">    let session: ChatSession</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">&nbsp;</div>
+
+                            <div class="diff-line context">    var body: some View {</div>
+
+                            <div class="diff-line remove">        HStack(spacing: 12) {</div>
+
+                            <div class="diff-line remove">            // Session name</div>
+
+                            <div class="diff-line remove">            Text(session.title)</div>
+
+                            <div class="diff-line remove">                .font(.system(size: 15, weight: .medium))</div>
+
+                            <div class="diff-line remove">                .lineLimit(1)</div>
+
+                            <div class="diff-line remove">                .foregroundColor(.primary)</div>
+
+                            <div class="diff-line remove">            </div>
+
+                            <div class="diff-line remove">            Spacer()</div>
+
+                            <div class="diff-line remove">            </div>
+
+                            <div class="diff-line remove">            // Time ago</div>
+
+                            <div class="diff-line remove">            Text(formatTime(session.updatedAt))</div>
+
+                            <div class="diff-line remove">                .font(.system(size: 13))</div>
+
+                            <div class="diff-line remove">                .foregroundColor(.secondary)</div>
+
+                            <div class="diff-line remove">            </div>
+
+                            <div class="diff-line remove">            // Message count with icon</div>
+
+                            <div class="diff-line remove">            HStack(spacing: 4) {</div>
+
+                            <div class="diff-line remove">                Image(&quot;MessageIcon&quot;)</div>
+
+                            <div class="diff-line remove">                    .resizable()</div>
+
+                            <div class="diff-line remove">                    .aspectRatio(contentMode: .fit)</div>
+
+                            <div class="diff-line remove">                    .frame(width: 12, height: 12)</div>
+
+                            <div class="diff-line remove">                    .foregroundColor(.secondary)</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">                </div>
+
+                            <div class="diff-line remove">                Text(&quot;\(session.messageCount)&quot;)</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">                    .font(.system(size: 13))</div>
+
+                            <div class="diff-line context">                    .foregroundColor(.secondary)</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">            }</div>
+
+                            <div class="diff-line context">        }</div>
+
+                            <div class="diff-line context">        .padding(.horizontal, 16)</div>
+
+                        </div>
+                        <div class="diff-column new">
+                            <div class="column-header">After</div>
+
+                            <div class="diff-line context">// MARK: - Session Row View</div>
+
+                            <div class="diff-line context">struct SessionRowView: View {</div>
+
+                            <div class="diff-line context">    let session: ChatSession</div>
+
+                            <div class="diff-line add">    var showFolder: Bool = true</div>
+
+                            <div class="diff-line context">&nbsp;</div>
+
+                            <div class="diff-line context">    var body: some View {</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line add">        VStack(alignment: .leading, spacing: 4) {</div>
+
+                            <div class="diff-line add">            HStack(spacing: 8) {</div>
+
+                            <div class="diff-line add">                // Session name with folder inline</div>
+
+                            <div class="diff-line add">                HStack(spacing: 4) {</div>
+
+                            <div class="diff-line add">                    Text(session.title)</div>
+
+                            <div class="diff-line add">                        .font(.system(size: 15, weight: .medium))</div>
+
+                            <div class="diff-line add">                        .lineLimit(1)</div>
+
+                            <div class="diff-line add">                        .foregroundColor(.primary)</div>
+
+                            <div class="diff-line add">                    </div>
+
+                            <div class="diff-line add">                    // Show folder name inline if available and enabled</div>
+
+                            <div class="diff-line add">                    if showFolder, let workingDir = session.workingDir, !workingDir.isEmpty {</div>
+
+                            <div class="diff-line add">                        HStack(spacing: 2) {</div>
+
+                            <div class="diff-line add">                            Image(systemName: &quot;folder&quot;)</div>
+
+                            <div class="diff-line add">                                .font(.system(size: 9))</div>
+
+                            <div class="diff-line add">                                .foregroundColor(.secondary)</div>
+
+                            <div class="diff-line add">                            Text(session.directoryName)</div>
+
+                            <div class="diff-line add">                                .font(.system(size: 10))</div>
+
+                            <div class="diff-line add">                                .foregroundColor(.secondary)</div>
+
+                            <div class="diff-line add">                                .lineLimit(1)</div>
+
+                            <div class="diff-line add">                        }</div>
+
+                            <div class="diff-line add">                    }</div>
+
+                            <div class="diff-line add">                }</div>
+
+                            <div class="diff-line add">                </div>
+
+                            <div class="diff-line add">                Spacer()</div>
+
+                            <div class="diff-line context">                </div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line add">                // Time ago</div>
+
+                            <div class="diff-line add">                Text(formatTime(session.updatedAt))</div>
+
+                            <div class="diff-line context">                    .font(.system(size: 13))</div>
+
+                            <div class="diff-line context">                    .foregroundColor(.secondary)</div>
+
+                            <div class="diff-line add">                </div>
+
+                            <div class="diff-line add">                // Message count with icon</div>
+
+                            <div class="diff-line add">                HStack(spacing: 4) {</div>
+
+                            <div class="diff-line add">                    Image(&quot;MessageIcon&quot;)</div>
+
+                            <div class="diff-line add">                        .resizable()</div>
+
+                            <div class="diff-line add">                        .aspectRatio(contentMode: .fit)</div>
+
+                            <div class="diff-line add">                        .frame(width: 12, height: 12)</div>
+
+                            <div class="diff-line add">                        .foregroundColor(.secondary)</div>
+
+                            <div class="diff-line add">                    </div>
+
+                            <div class="diff-line add">                    Text(&quot;\(session.messageCount)&quot;)</div>
+
+                            <div class="diff-line add">                        .font(.system(size: 13))</div>
+
+                            <div class="diff-line add">                        .foregroundColor(.secondary)</div>
+
+                            <div class="diff-line add">                }</div>
+
+                            <div class="diff-line context">            }</div>
+
+                            <div class="diff-line context">        }</div>
+
+                            <div class="diff-line context">        .padding(.horizontal, 16)</div>
+
+                        </div>
+                    </div>
+
+                </div>
+
+
+                <div class="file-change">
+                    <div class="file-header">📄 Goose/TrialMode.swift</div>
+
+
+                    <div class="hunk-header">@@ -39,7 +39,8 @@ class TrialMode {</div>
+                    <div class="diff-table">
+                        <div class="diff-column old">
+                            <div class="column-header">Before</div>
+
+                            <div class="diff-line context">                description: description,</div>
+
+                            <div class="diff-line context">                messageCount: messageCount,</div>
+
+                            <div class="diff-line context">                createdAt: createdAt,</div>
+
+                            <div class="diff-line remove">                updatedAt: updatedAt</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">            )</div>
+
+                            <div class="diff-line context">        }</div>
+
+                            <div class="diff-line context">    }</div>
+
+                        </div>
+                        <div class="diff-column new">
+                            <div class="column-header">After</div>
+
+                            <div class="diff-line context">                description: description,</div>
+
+                            <div class="diff-line context">                messageCount: messageCount,</div>
+
+                            <div class="diff-line context">                createdAt: createdAt,</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line add">                updatedAt: updatedAt,</div>
+
+                            <div class="diff-line add">                workingDir: nil</div>
+
+                            <div class="diff-line context">            )</div>
+
+                            <div class="diff-line context">        }</div>
+
+                            <div class="diff-line context">    }</div>
+
+                        </div>
+                    </div>
+
+
+                    <div class="hunk-header">@@ -576,7 +577,8 @@ class TrialMode {</div>
+                    <div class="diff-table">
+                        <div class="diff-column old">
+                            <div class="column-header">Before</div>
+
+                            <div class="diff-line context">                    description: &quot;Current Session&quot;,</div>
+
+                            <div class="diff-line context">                    messageCount: 0,  // Will be updated when loaded</div>
+
+                            <div class="diff-line context">                    createdAt: formatter.string(from: now),</div>
+
+                            <div class="diff-line remove">                    updatedAt: formatter.string(from: now)</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line context">                ))</div>
+
+                            <div class="diff-line context">        }</div>
+
+                            <div class="diff-line context">&nbsp;</div>
+
+                        </div>
+                        <div class="diff-column new">
+                            <div class="column-header">After</div>
+
+                            <div class="diff-line context">                    description: &quot;Current Session&quot;,</div>
+
+                            <div class="diff-line context">                    messageCount: 0,  // Will be updated when loaded</div>
+
+                            <div class="diff-line context">                    createdAt: formatter.string(from: now),</div>
+
+                            <div class="diff-line empty">&nbsp;</div>
+
+                            <div class="diff-line add">                    updatedAt: formatter.string(from: now),</div>
+
+                            <div class="diff-line add">                    workingDir: nil</div>
+
+                            <div class="diff-line context">                ))</div>
+
+                            <div class="diff-line context">        }</div>
+
+                            <div class="diff-line context">&nbsp;</div>
+
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+
+        <footer>
+            <p>Generated by Git Diff Report Generator | 2025-10-31 12:56:33</p>
+        </footer>
+    </div>
+</body>
+</html>
