@@ -2,6 +2,11 @@
 
 A beautiful native macOS application for viewing git diffs with side-by-side comparison.
 
+<img width="1401" height="882" alt="Screenshot 2025-10-31 at 2 41 42 pm" src="https://github.com/user-attachments/assets/1eeb5f54-8c15-4d91-9d7d-48870ffda2b2" />
+
+<img width="1391" height="899" alt="image" src="https://github.com/user-attachments/assets/d50e9528-fb01-4e09-b6c5-7d7b7adb9c7e" />
+
+
 ![GitDiffViewer](https://img.shields.io/badge/platform-macOS-blue)
 ![Swift](https://img.shields.io/badge/Swift-5.9-orange)
 ![macOS](https://img.shields.io/badge/macOS-14.0+-green)
