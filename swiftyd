@@ -1,0 +1,58 @@
+#!/bin/bash
+# swiftyd - CLI wrapper for GitDiffViewer
+
+# Get the directory to open (default to current directory)
+DIR="${1:-.}"
+
+# Convert to absolute path
+ABS_PATH=$(cd "$DIR" && pwd)
+
+# Check if directory exists
+if [ ! -d "$ABS_PATH" ]; then
+    echo "Error: '$DIR' is not a valid directory"
+    exit 1
+fi
+
+# Check if it's a git repository
+if [ ! -d "$ABS_PATH/.git" ]; then
+    echo "Warning: '$ABS_PATH' is not a git repository"
+    read -p "Open anyway? (y/n) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        exit 0
+    fi
+fi
+
+# Find the app bundle
+APP_PATH="/Users/micn/Library/Developer/Xcode/DerivedData/GitDiffViewer-byeggncdrlwesfhhwkpbvtwmyaiu/Build/Products/Debug/GitDiffViewer.app"
+
+# Check if we need to look in a different location
+if [ ! -d "$APP_PATH" ]; then
+    # Try to find it in common locations
+    POSSIBLE_PATHS=(
+        "/Applications/GitDiffViewer.app"
+        "$HOME/Applications/GitDiffViewer.app"
+        "/Users/micn/Library/Developer/Xcode/DerivedData/GitDiffViewer-*/Build/Products/Debug/GitDiffViewer.app"
+    )
+    
+    for path in "${POSSIBLE_PATHS[@]}"; do
+        # Expand glob pattern
+        for expanded_path in $path; do
+            if [ -d "$expanded_path" ]; then
+                APP_PATH="$expanded_path"
+                break 2
+            fi
+        done
+    done
+fi
+
+if [ ! -d "$APP_PATH" ]; then
+    echo "Error: GitDiffViewer.app not found"
+    echo "Please build the app first or install it to /Applications"
+    exit 1
+fi
+
+# Launch the app with the directory path
+open -a "$APP_PATH" --args "$ABS_PATH"
+
+echo "Opening GitDiffViewer at: $ABS_PATH"
