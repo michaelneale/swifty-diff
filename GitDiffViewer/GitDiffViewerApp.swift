@@ -69,11 +69,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var appState: AppState?
     
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Prevent app from terminating when all windows are closed
-        NSApplication.shared.setActivationPolicy(.accessory)
-        
-        // Create status bar item
-        setupStatusItem()
+        // Normal app with dock icon
+        NSApplication.shared.setActivationPolicy(.regular)
     }
     
     func setupStatusItem() {
@@ -159,9 +156,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        // Don't quit when last window closes, stay in menu bar
-        NSApplication.shared.setActivationPolicy(.accessory)
-        return false
+        // Quit when last window closes like a normal app
+        return true
     }
 }
 
