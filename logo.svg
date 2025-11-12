@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Gradient backgrounds -->
+    <linearGradient id="mainGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="addGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4ade80;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#22c55e;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="removeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ef4444;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#dc2626;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Drop shadow filter -->
+    <filter id="dropShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#000000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  
+  <!-- Background circle with gradient -->
+  <circle cx="512" cy="512" r="480" fill="url(#mainGradient)" filter="url(#dropShadow)"/>
+  
+  <!-- Inner circle for depth -->
+  <circle cx="512" cy="512" r="440" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
+  
+  <!-- Git branch symbol (stylized) -->
+  <g transform="translate(512, 200)">
+    <!-- Main branch line -->
+    <circle cx="0" cy="0" r="20" fill="white" opacity="0.9"/>
+    <line x1="0" y1="20" x2="0" y2="120" stroke="white" stroke-width="8" opacity="0.9"/>
+    <circle cx="0" cy="140" r="20" fill="white" opacity="0.9"/>
+    
+    <!-- Feature branch -->
+    <circle cx="80" cy="60" r="16" fill="white" opacity="0.7"/>
+    <path d="M 20 40 Q 40 40, 60 60" stroke="white" stroke-width="6" fill="none" opacity="0.7"/>
+    <path d="M 80 76 Q 60 120, 20 120" stroke="white" stroke-width="6" fill="none" opacity="0.7"/>
+  </g>
+  
+  <!-- Split diff representation -->
+  <g transform="translate(512, 400)">
+    <!-- Left side (removals) -->
+    <rect x="-180" y="0" width="160" height="240" rx="20" fill="url(#removeGradient)" opacity="0.9"/>
+    <rect x="-160" y="20" width="120" height="12" rx="6" fill="white" opacity="0.8"/>
+    <rect x="-160" y="40" width="100" height="12" rx="6" fill="white" opacity="0.6"/>
+    <rect x="-160" y="60" width="140" height="12" rx="6" fill="white" opacity="0.8"/>
+    <rect x="-160" y="80" width="80" height="12" rx="6" fill="white" opacity="0.4"/>
+    
+    <!-- Minus signs -->
+    <circle cx="-200" cy="46" r="8" fill="white" opacity="0.9"/>
+    <rect x="-206" y="44" width="12" height="4" rx="2" fill="url(#removeGradient)"/>
+    
+    <!-- Right side (additions) -->
+    <rect x="20" y="0" width="160" height="240" rx="20" fill="url(#addGradient)" opacity="0.9"/>
+    <rect x="40" y="20" width="120" height="12" rx="6" fill="white" opacity="0.8"/>
+    <rect x="40" y="40" width="130" height="12" rx="6" fill="white" opacity="0.8"/>
+    <rect x="40" y="60" width="110" height="12" rx="6" fill="white" opacity="0.6"/>
+    <rect x="40" y="80" width="140" height="12" rx="6" fill="white" opacity="0.8"/>
+    
+    <!-- Plus signs -->
+    <circle cx="200" cy="46" r="8" fill="white" opacity="0.9"/>
+    <rect x="196" y="44" width="8" height="4" rx="2" fill="url(#addGradient)"/>
+    <rect x="198" y="42" width="4" height="8" rx="2" fill="url(#addGradient)"/>
+    
+    <!-- Divider line -->
+    <line x1="-10" y1="0" x2="-10" y2="240" stroke="rgba(255,255,255,0.3)" stroke-width="4"/>
+    <line x1="10" y1="0" x2="10" y2="240" stroke="rgba(255,255,255,0.3)" stroke-width="4"/>
+  </g>
+  
+  <!-- Decorative elements -->
+  <g opacity="0.3">
+    <!-- Code brackets -->
+    <path d="M 150 300 L 120 330 L 150 360" stroke="white" stroke-width="6" fill="none"/>
+    <path d="M 874 300 L 904 330 L 874 360" stroke="white" stroke-width="6" fill="none"/>
+    
+    <!-- Small dots for decoration -->
+    <circle cx="200" cy="750" r="4" fill="white" opacity="0.6"/>
+    <circle cx="824" cy="750" r="4" fill="white" opacity="0.6"/>
+    <circle cx="220" cy="780" r="3" fill="white" opacity="0.4"/>
+    <circle cx="804" cy="780" r="3" fill="white" opacity="0.4"/>
+  </g>
+  
+  <!-- Bottom subtle text effect -->
+  <g transform="translate(512, 850)" opacity="0.2">
+    <text x="0" y="0" text-anchor="middle" font-family="SF Mono, Monaco, monospace" font-size="24" font-weight="600" fill="white">DIFF</text>
+  </g>
+</svg>

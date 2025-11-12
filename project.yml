@@ -9,6 +9,8 @@ targets:
     platform: macOS
     sources:
       - GitDiffViewer
+    resources:
+      - GitDiffViewer/Assets.xcassets
     settings:
       PRODUCT_BUNDLE_IDENTIFIER: com.block.goose.GitDiffViewer
       PRODUCT_NAME: GitDiffViewer
@@ -16,3 +18,4 @@ targets:
       SWIFT_VERSION: "5.9"
       MACOSX_DEPLOYMENT_TARGET: "14.0"
       ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+      CODE_SIGN_STYLE: Automatic
